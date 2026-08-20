@@ -1,1 +1,179 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Unbounded", "Golos Text", sans-serif;
+  --font-body: "Golos Text", "Segoe UI", sans-serif;
+
+  --color-pine-950: #081711;
+  --color-pine-900: #0d231b;
+  --color-pine-850: #112c22;
+  --color-pine-800: #163326;
+  --color-pine-700: #1e4534;
+  --color-pine-600: #2b5c46;
+  --color-pine-100: #d9e6dd;
+
+  --color-paper: #f1f4ee;
+  --color-card: #fbfcf8;
+  --color-line: #dde6dd;
+  --color-ink: #152420;
+  --color-inksoft: #5d6f66;
+  --color-inkmut: #8b9a91;
+
+  --color-orange: #ff8a3d;
+  --color-sky: #2fa8dc;
+  --color-mint: #1fa97a;
+  --color-gold: #e8a912;
+  --color-coral: #f05d50;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(31, 169, 122, 0.28); }
+
+.font-700 { font-weight: 700; }
+.font-900 { font-weight: 900; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #16332677;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---------- ambient layers ---------- */
+.chalk-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+.paper-grid {
+  background-image:
+    linear-gradient(rgba(21, 36, 32, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(21, 36, 32, 0.035) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+.noise-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+}
+.stripes-lock {
+  background-image: repeating-linear-gradient(135deg, rgba(21, 36, 32, 0.07) 0 6px, transparent 6px 13px);
+}
+.glyph {
+  position: absolute;
+  font-family: var(--font-display);
+  user-select: none;
+  pointer-events: none;
+  animation: floaty var(--dur, 8s) ease-in-out var(--del, 0s) infinite alternate;
+}
+
+/* ---------- keyframes ---------- */
+@keyframes floaty {
+  from { transform: translateY(0) rotate(-2deg); }
+  to   { transform: translateY(-16px) rotate(3deg); }
+}
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card-rise { animation: cardRise 0.55s cubic-bezier(0.22, 0.9, 0.3, 1) both; animation-delay: var(--d, 0ms); }
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.pop-in { animation: popIn 0.28s cubic-bezier(0.22, 0.9, 0.3, 1) both; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.toast-in { animation: toastIn 0.3s cubic-bezier(0.22, 0.9, 0.3, 1) both; }
+
+@keyframes pulseDot {
+  0%   { box-shadow: 0 0 0 0 rgba(31, 169, 122, 0.55); }
+  70%  { box-shadow: 0 0 0 9px rgba(31, 169, 122, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(31, 169, 122, 0); }
+}
+.pulse-dot { animation: pulseDot 1.8s ease-out infinite; }
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.shake { animation: shakeX 0.4s ease both; }
+
+@keyframes drawPath { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+.draw-path { stroke-dasharray: 100; animation: drawPath 0.6s 0.15s cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+@keyframes rowFlash { from { background: rgba(31, 169, 122, 0.22); } to { background: transparent; } }
+.row-new { animation: rowFlash 1.6s ease-out both; }
+
+@keyframes blinkSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.blink-soft { animation: blinkSoft 1.6s ease-in-out infinite; }
+
+/* космические эффекты */
+@keyframes twinkle { from { opacity: 0.12; } to { opacity: 0.9; } }
+.cosmos-star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle ease-in-out infinite alternate; }
+@keyframes cosmosPulse { 50% { box-shadow: 0 0 22px 6px currentColor; } }
+.cosmos-target { animation: cosmosPulse 1.6s ease-in-out infinite; }
+@keyframes riseFade { to { transform: translateY(-36px); opacity: 0; } }
+.cosmos-fpt { animation: riseFade 0.9s ease-out forwards; }
+
+/* космическая тетрадь */
+@keyframes snbFade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+.snb-fade { animation: snbFade 0.45s ease both; }
+@keyframes snbPop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.snb-pop { animation: snbPop 2s ease-in-out infinite; }
+@keyframes snbShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-9px); } 75% { transform: translateX(9px); } }
+.snb-shake { animation: snbShake 0.4s ease; }
+
+/* конфетти */
+@keyframes confettiFall { to { transform: translate(var(--dx, 0), 106vh) rotate(720deg); } }
+.confetti-bit {
+  position: fixed;
+  top: -14px;
+  width: 10px;
+  height: 15px;
+  z-index: 10000;
+  pointer-events: none;
+  border-radius: 2px;
+  animation: confettiFall 2.8s linear forwards;
+}
+
+/* scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s cubic-bezier(0.22, 0.9, 0.3, 1), transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.reveal.is-in { opacity: 1; transform: translateY(0); }
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .glyph, .noise-layer, .confetti-bit { display: none; }
+  .reveal { opacity: 1; transform: none; }
+}

@@ -33,7 +33,7 @@ export type Action =
   | { type: 'SET_VALIDITY'; courseId: string; months: number }
   | { type: 'SET_TRIAL_DAYS'; days: number }
   | { type: 'TOGGLE_PUBLISHED'; courseId: string }
-  | { type: 'EXTEND_ACCESS'; studentId: string; courseId: string; months: number }
+  | { type: 'EXTEND_ACCESS'; studentId: string; days: number }
   | { type: 'DELETE_STUDENT'; studentId: string }
   | { type: 'SET_PASSWORD'; studentId: string; password: string }
   | { type: 'TOAST'; text: string; tone?: Toast['tone'] }
@@ -178,13 +178,16 @@ function reducer(state: State, action: Action): State {
       );
     }
     case 'EXTEND_ACCESS': {
-      const nowTs = Date.now();
+      const DAY_MS = 86_400_000;
       const students = state.students.map((s) => {
         if (s.id !== action.studentId) return s;
-        const base = Math.max(nowTs, s.accessUntil[action.courseId] ?? 0);
-        return { ...s, accessUntil: { ...s.accessUntil, [action.courseId]: base + action.months * MONTH_MS } };
+        const accessUntil: Record<string, number> = {};
+        Object.entries(s.accessUntil).forEach(([courseId, ts]) => {
+          accessUntil[courseId] = ts + action.days * DAY_MS;
+        });
+        return { ...s, accessUntil };
       });
-      return withToast({ ...state, students }, `Доступ продлён на ${action.months} мес.`, 'ok');
+      return withToast({ ...state, students }, `Доступ продлён на ${action.days} дн.`, 'ok');
     }
     case 'DELETE_STUDENT': {
       const student = state.students.find((s) => s.id === action.studentId);

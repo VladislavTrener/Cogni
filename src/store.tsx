@@ -80,9 +80,13 @@ function init(): State {
     if (raw) {
       const parsed = JSON.parse(raw) as typeof base;
       if (parsed && Array.isArray(parsed.students) && Array.isArray(parsed.courses)) {
+        // сохраняем правки админа (цены, публикацию), но автоматически
+        // добавляем курсы, которых ещё нет в хранилище — новые из обновлений
+        const savedIds = new Set(parsed.courses.map((c) => c.id));
+        const mergedCourses = [...parsed.courses, ...SEED_COURSES.filter((c) => !savedIds.has(c.id))];
         base = {
           students: parsed.students,
-          courses: parsed.courses,
+          courses: mergedCourses,
           payments: Array.isArray(parsed.payments) ? parsed.payments : SEED_PAYMENTS,
           settings:
             parsed.settings && typeof parsed.settings.trialDays === 'number'

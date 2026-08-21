@@ -59,7 +59,8 @@ export interface Student {
   registeredAt: number;
   /** courseId → timestamp окончания доступа */
   accessUntil: Record<string, number>;
-  password: string;
+  phone: string;
+  email: string;
 }
 
 export interface Payment {

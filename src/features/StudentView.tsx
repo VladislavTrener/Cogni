@@ -40,6 +40,7 @@ import {
 import { MultCosmosTrainer, MultLeitnerTrainer, MultNotebookTrainer } from './trainers/mult';
 import { QuestTrainer } from './trainers/quest';
 import { NBackTrainer, SequenceTrainer } from './trainers/memory';
+import { StroopTrainer } from './trainers/stroop';
 import { AdditionCosmosTrainer, AdditionCountTrainer, AdditionSmartTrainer } from './trainers/addition';
 import { SubtractionTrainer } from './trainers/subtraction';
 
@@ -288,6 +289,7 @@ function LessonModal({ course, lesson, onClose }: { course: Course; lesson: Less
           {t === 'addCosmos' && <AdditionCosmosTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
           {t === 'nback' && <NBackTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
           {t === 'sequence' && <SequenceTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
+          {t === 'stroop' && <StroopTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
           {(t === 'sub10' || t === 'sub20' || t === 'mix20') && (
             <SubtractionTrainer mode={t} alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />
           )}

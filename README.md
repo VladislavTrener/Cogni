@@ -48,6 +48,7 @@
 | 16 | `src/features/trainers/mult.tsx` | «Школа умножения»: интервалы, Тетрадь в клетку, Космополёт |
 | 17 | `src/features/trainers/addition.tsx` | «Тренировка сложения»: счёт до 20, умные интервалы, Космолёт |
 | 18 | `src/features/trainers/memory.tsx` | Память: N-back (N-1/N-2) и «Запомни последовательность» |
+| — | `src/features/trainers/stroop.tsx` | Память: тест Струпа, блоки 4×4–10×10 (чёрная, разноцветная, Горбова) |
 | 19 | `src/features/trainers/quest.tsx` | «Космическая тетрадь»: квест на 100 текстовых задач |
 | 20 | `src/features/trainers/subtraction.tsx` | Вычитание от 10 / от 20 и микс «сложение+вычитание до 20» |
 

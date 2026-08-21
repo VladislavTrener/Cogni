@@ -17,7 +17,8 @@ export type TrainerId =
   | 'addCosmos'
   | 'sub10'
   | 'sub20'
-  | 'mix20';
+  | 'mix20'
+  | 'stroop';
 
 export interface Direction {
   id: DirectionId;
@@ -207,6 +208,18 @@ export const SEED_COURSES: Course[] = [
     validityMonths: 3,
     published: true,
     lessons: [{ id: 'ls-seq-1', title: 'Мигающие квадраты: 4×4 → 6×6', kind: 'trainer', minutes: 12, trainer: 'sequence' }],
+  },
+  {
+    id: 'c-mem-stroop',
+    directionId: 'memory',
+    title: 'Тест Струпа: таблицы внимания',
+    subtitle: 'Семь блоков от 4×4 до 10×10. В каждом — три таблицы: чёрная, разноцветная и красно-чёрная Горбова. Цифры перемешиваются при каждой попытке',
+    level: 2,
+    age: '9–13 лет',
+    price: 1900,
+    validityMonths: 3,
+    published: true,
+    lessons: [{ id: 'ls-stroop-1', title: 'Блоки 4×4 → 10×10: три таблицы', kind: 'trainer', minutes: 15, trainer: 'stroop' }],
   },
 ];
 

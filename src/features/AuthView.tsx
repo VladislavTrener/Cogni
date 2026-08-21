@@ -24,6 +24,22 @@ import {
 const inputCls =
   'w-full rounded-lg border border-line bg-card px-4 py-3 text-[14px] text-ink outline-none placeholder:text-inkmut/50 focus:border-pine-700 transition-colors';
 
+/**
+ * Понятные варианты логинов для персонала (принимаются наравне с основными).
+ * Работает независимо от сохранённых данных — помогает войти с первого раза.
+ */
+const LOGIN_ALIASES: Record<string, string> = {
+  администратор: 'admin',
+  админ: 'admin',
+  administrator: 'admin',
+  root: 'admin',
+  teacher: 'bichurin',
+  бичурин: 'bichurin',
+  'бичурин в.а.': 'bichurin',
+  преподаватель: 'bichurin',
+  учитель: 'bichurin',
+};
+
 function AuthPanel() {
   const { state, dispatch } = useStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -49,7 +65,9 @@ function AuthPanel() {
   };
 
   const doLogin = () => {
-    const lg = login.trim().toLowerCase();
+    const raw = login.trim().toLowerCase();
+    // распознаём понятные варианты логинов (teacher → bichurin, администратор → admin и т.п.)
+    const lg = LOGIN_ALIASES[raw] ?? raw;
     if (!lg || !password) {
       setLoginErr('Введите логин и пароль');
       return;
@@ -121,9 +139,9 @@ function AuthPanel() {
   };
 
   const demo = [
-    { label: 'Ученик (демо)', login: 'misha@demo.ru', pass: 'misha2016' },
-    { label: 'Преподаватель', login: 'bichurin', pass: '1234567890' },
-    { label: 'Администратор', login: 'admin', pass: '1234567890' },
+    { label: 'Ученик (демо)', login: 'misha@demo.ru', pass: 'misha2016', hint: 'misha@demo.ru' },
+    { label: 'Преподаватель', login: 'bichurin', pass: '1234567890', hint: 'bichurin или «бичурин»' },
+    { label: 'Администратор', login: 'admin', pass: '1234567890', hint: 'admin или «администратор»' },
   ];
 
   return (
@@ -191,7 +209,7 @@ function AuthPanel() {
           </button>
 
           <div className="rounded-lg border border-dashed border-ink/20 px-4 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-inkmut mb-2">Быстрый демо-вход</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-inkmut mb-2">Быстрый демо-вход (нажмите — поля заполнятся)</p>
             <div className="flex flex-wrap gap-1.5">
               {demo.map((d) => (
                 <button
@@ -201,12 +219,16 @@ function AuthPanel() {
                     setPassword(d.pass);
                     setLoginErr(null);
                   }}
+                  title={`Логин: ${d.hint} · Пароль: ${d.pass}`}
                   className="rounded-md border border-ink/15 px-2.5 py-1 text-[11.5px] font-semibold text-inksoft transition-colors hover:border-pine-700 hover:text-ink"
                 >
                   {d.label}
                 </button>
               ))}
             </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-inkmut">
+              Пароль у преподавателя и администратора — <b className="text-ink">1234567890</b>. Логины: <b className="text-ink">bichurin</b> (или «бичурин») и <b className="text-ink">admin</b> (или «администратор»).
+            </p>
           </div>
         </div>
       ) : (

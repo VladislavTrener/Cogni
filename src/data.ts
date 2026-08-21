@@ -3,7 +3,7 @@
  */
 
 /** Видна в подвале сайта — помогает понять, свежая ли сборка установлена */
-export const APP_VERSION = 'v1.11 · курс «Логика: 2–4 класс» (149 задач)';
+export const APP_VERSION = 'v1.12 · курс «Логика: 2–4 класс» (235 задач)';
 
 export type DirectionId = 'count' | 'memory' | 'logic' | 'general';
 export type Role = 'student' | 'teacher' | 'admin';
@@ -267,7 +267,7 @@ export const SEED_COURSES: Course[] = [
   {
     id: 'c-logic-school',
     directionId: 'logic',
-    title: 'Логика: 2–4 класс: 149 задач',
+    title: 'Логика: 2–4 класс: 235 задач',
     subtitle: 'Для школьников. Десять типов задач — умозаключения, анаграммы, сравнения, цветные слова, семья, возраст, «или — или» и другие — плюс большой тест. Задачи озвучиваются голосом',
     level: 2,
     age: '8–11 лет',

@@ -53,8 +53,10 @@
 | 20 | `src/features/trainers/subtraction.tsx` | Вычитание от 10 / от 20 и микс «сложение+вычитание до 20» |
 | 21 | `src/features/trainers/logicData.ts` | Банк из 150 логических задач (6 типов, для дошкольников и 1 класса) |
 | 22 | `src/features/trainers/logic.tsx` | Тренажёр логики (общий для обоих курсов), с озвучкой |
-| 23 | `src/features/trainers/logicData2.ts` | Банк из 149 школьных задач, часть 1 (задачи 1–75) |
-| 24 | `src/features/trainers/logicData3.ts` | Банк из 149 школьных задач, часть 2 (задачи 76–149) |
+| 23 | `src/features/trainers/logicData2.ts` | Банк из 235 школьных задач, часть 1 (задачи 1–75) + сборка |
+| 24 | `src/features/trainers/logicData3.ts` | Банк из 235 школьных задач, часть 2 (задачи 76–149) |
+| 25 | `src/features/trainers/logicData4.ts` | Банк из 235 школьных задач, часть 3 (задачи 150–199) |
+| 26 | `src/features/trainers/logicData5.ts` | Банк из 235 школьных задач, часть 4 (задачи 200–235) |
 
 ## Структура папок (должно получиться)
 

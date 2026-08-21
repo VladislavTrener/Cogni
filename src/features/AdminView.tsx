@@ -88,6 +88,7 @@ export default function AdminView() {
   const studentById = (id: string) => state.students.find((s) => s.id === id);
   const deleteStudent = deleteId ? studentById(deleteId) : null;
   const passStudent = passId ? studentById(passId) : null;
+  const passAccount = passId ? state.accounts.find((a) => a.studentId === passId) ?? null : null;
   const extendStudent = extendId ? studentById(extendId) : null;
 
   const tabs: { id: AdminTab; label: string }[] = [
@@ -276,7 +277,7 @@ export default function AdminView() {
                           </span>
                           <span>
                             <span className="block font-bold text-ink">{s.name}</span>
-                            <span className="text-[11.5px] text-inkmut">{s.age} лет · группа {s.group} · пароль: {s.password}</span>
+                            <span className="text-[11.5px] text-inkmut">{s.age} лет · группа {s.group} · {s.email}</span>
                           </span>
                         </span>
                       </td>
@@ -361,8 +362,8 @@ export default function AdminView() {
         </Modal>
       )}
 
-      {/* смена пароля */}
-      {passStudent && (
+      {/* смена пароля (вручную администратором) */}
+      {passAccount && (
         <Modal onClose={() => setPassId(null)} width="max-w-md" labelledBy="pass-title">
           <div className="p-6 sm:p-7">
             <div className="flex items-start justify-between">
@@ -372,13 +373,16 @@ export default function AdminView() {
               </button>
             </div>
             <p className="mt-2 text-[13px] text-inksoft">
-              Ученик: <b className="text-ink">{passStudent.name}</b> · текущий пароль: <b className="text-ink">{passStudent.password}</b>
+              Пользователь: <b className="text-ink">{passAccount.name}</b> · логин: <b className="text-ink">{passAccount.login}</b>
+            </p>
+            <p className="mt-1 text-[12px] text-inkmut">
+              Текущий пароль: <b className="text-ink">{passAccount.password}</b> — смена также снимает блокировку входа.
             </p>
             <input
               autoFocus
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
-              placeholder="Минимум 4 символа"
+              placeholder="Минимум 6 символов"
               className="mt-4 w-full rounded-lg border border-line bg-card px-4 py-3 font-display text-[15px] text-ink outline-none placeholder:text-inkmut/50 focus:border-pine-700 transition-colors"
               aria-label="Новый пароль"
             />
@@ -388,10 +392,10 @@ export default function AdminView() {
               </button>
               <button
                 onClick={() => {
-                  dispatch({ type: 'SET_PASSWORD', studentId: passStudent.id, password: newPass.trim() });
+                  dispatch({ type: 'SET_PASSWORD', accountId: passAccount.id, password: newPass.trim() });
                   setPassId(null);
                 }}
-                disabled={newPass.trim().length < 4}
+                disabled={newPass.trim().length < 6}
                 className="rounded-lg bg-pine-900 px-5 py-2.5 text-[13.5px] font-bold text-paper transition-colors hover:bg-pine-700 disabled:opacity-40"
               >
                 Сохранить

@@ -41,6 +41,7 @@ import { MultCosmosTrainer, MultLeitnerTrainer, MultNotebookTrainer } from './tr
 import { QuestTrainer } from './trainers/quest';
 import { NBackTrainer, SequenceTrainer } from './trainers/memory';
 import { AdditionCosmosTrainer, AdditionCountTrainer, AdditionSmartTrainer } from './trainers/addition';
+import { SubtractionTrainer } from './trainers/subtraction';
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
 
@@ -287,6 +288,9 @@ function LessonModal({ course, lesson, onClose }: { course: Course; lesson: Less
           {t === 'addCosmos' && <AdditionCosmosTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
           {t === 'nback' && <NBackTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
           {t === 'sequence' && <SequenceTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
+          {(t === 'sub10' || t === 'sub20' || t === 'mix20') && (
+            <SubtractionTrainer mode={t} alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />
+          )}
         </div>
       </div>
     </Modal>

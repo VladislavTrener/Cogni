@@ -3,8 +3,8 @@
  */
 
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import type { Course, Payment, Role, Settings, Student } from './data';
-import { SEED_COURSES, SEED_PAYMENTS, SEED_SETTINGS, SEED_STUDENTS } from './data';
+import type { Account, Course, Payment, Role, Settings, Student } from './data';
+import { SEED_ACCOUNTS, SEED_COURSES, SEED_PAYMENTS, SEED_SETTINGS, SEED_STUDENTS } from './data';
 
 export interface Toast {
   id: number;
@@ -17,9 +17,17 @@ export interface State {
   courses: Course[];
   payments: Payment[];
   settings: Settings;
+  accounts: Account[];
+  /** login → количество неудачных попыток входа */
+  attempts: Record<string, number>;
+  /** login → timestamp, до которого вход заблокирован */
+  lockedUntil: Record<string, number>;
   session: { userId: string; role: Role } | null;
   toasts: Toast[];
 }
+
+export const MAX_ATTEMPTS = 3;
+export const LOCK_MS = 5 * 60_000; // блокировка на 5 минут
 
 export type Action =
   | { type: 'LOGIN'; userId: string; role: Role }
@@ -35,12 +43,15 @@ export type Action =
   | { type: 'TOGGLE_PUBLISHED'; courseId: string }
   | { type: 'EXTEND_ACCESS'; studentId: string; days: number }
   | { type: 'DELETE_STUDENT'; studentId: string }
-  | { type: 'SET_PASSWORD'; studentId: string; password: string }
+  | { type: 'SET_PASSWORD'; accountId: string; password: string }
+  | { type: 'REGISTER'; account: Account; student: Student }
+  | { type: 'ATTEMPT_FAIL'; login: string }
+  | { type: 'UNLOCK'; login: string }
   | { type: 'TOAST'; text: string; tone?: Toast['tone'] }
   | { type: 'DISMISS_TOAST'; id: number }
   | { type: 'RESET' };
 
-const STORAGE_KEY = 'kognitiv-pro-v7';
+const STORAGE_KEY = 'kognitiv-pro-v8';
 const MONTH_MS = 30 * 86_400_000;
 let toastSeq = 1;
 
@@ -49,12 +60,15 @@ const withToast = (state: State, text: string, tone: Toast['tone'] = 'ok'): Stat
   toasts: [...state.toasts.slice(-3), { id: toastSeq++, text, tone }],
 });
 
-function freshSeed(): Pick<State, 'students' | 'courses' | 'payments' | 'settings'> {
+function freshSeed(): Pick<State, 'students' | 'courses' | 'payments' | 'settings' | 'accounts' | 'attempts' | 'lockedUntil'> {
   return {
     students: SEED_STUDENTS,
     courses: SEED_COURSES,
     payments: SEED_PAYMENTS,
     settings: { ...SEED_SETTINGS },
+    accounts: SEED_ACCOUNTS,
+    attempts: {},
+    lockedUntil: {},
   };
 }
 
@@ -73,6 +87,9 @@ function init(): State {
             parsed.settings && typeof parsed.settings.trialDays === 'number'
               ? { trialDays: parsed.settings.trialDays }
               : { ...SEED_SETTINGS },
+          accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : SEED_ACCOUNTS,
+          attempts: parsed.attempts ?? {},
+          lockedUntil: parsed.lockedUntil ?? {},
         };
       }
     }
@@ -192,12 +209,49 @@ function reducer(state: State, action: Action): State {
     case 'DELETE_STUDENT': {
       const student = state.students.find((s) => s.id === action.studentId);
       const students = state.students.filter((s) => s.id !== action.studentId);
+      const accounts = state.accounts.filter((a) => a.studentId !== action.studentId);
       const session = state.session?.userId === action.studentId ? null : state.session;
-      return withToast({ ...state, students, session }, `Пользователь «${student?.name ?? ''}» удалён`, 'warn');
+      return withToast({ ...state, students, accounts, session }, `Пользователь «${student?.name ?? ''}» удалён`, 'warn');
     }
     case 'SET_PASSWORD': {
-      const students = state.students.map((s) => (s.id === action.studentId ? { ...s, password: action.password } : s));
-      return withToast({ ...state, students }, 'Пароль изменён', 'ok');
+      const accounts = state.accounts.map((a) => (a.id === action.accountId ? { ...a, password: action.password } : a));
+      const acc = accounts.find((a) => a.id === action.accountId);
+      // смена пароля снимает блокировку входа
+      const attempts = { ...state.attempts };
+      const lockedUntil = { ...state.lockedUntil };
+      if (acc) {
+        delete attempts[acc.login];
+        delete lockedUntil[acc.login];
+      }
+      return withToast({ ...state, accounts, attempts, lockedUntil }, `Пароль для «${acc?.name ?? ''}» изменён`, 'ok');
+    }
+    case 'REGISTER': {
+      const exists =
+        state.accounts.some((a) => a.login === action.account.login) || state.students.some((s) => s.email === action.student.email);
+      if (exists) return withToast(state, 'Пользователь с таким e-mail уже зарегистрирован', 'warn');
+      const next: State = {
+        ...state,
+        accounts: [...state.accounts, action.account],
+        students: [...state.students, action.student],
+      };
+      return withToast(next, `Добро пожаловать, ${action.student.name.split(' ')[0]}! Демо-доступ ${state.settings.trialDays} дня активирован`, 'ok');
+    }
+    case 'ATTEMPT_FAIL': {
+      const count = (state.attempts[action.login] ?? 0) + 1;
+      const attempts = { ...state.attempts, [action.login]: count };
+      let lockedUntil = state.lockedUntil;
+      if (count >= MAX_ATTEMPTS) {
+        lockedUntil = { ...state.lockedUntil, [action.login]: Date.now() + LOCK_MS };
+        delete attempts[action.login];
+      }
+      return { ...state, attempts, lockedUntil };
+    }
+    case 'UNLOCK': {
+      const attempts = { ...state.attempts };
+      const lockedUntil = { ...state.lockedUntil };
+      delete attempts[action.login];
+      delete lockedUntil[action.login];
+      return { ...state, attempts, lockedUntil };
     }
     case 'TOAST':
       return withToast(state, action.text, action.tone ?? 'info');
@@ -236,12 +290,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           courses: state.courses,
           payments: state.payments,
           settings: state.settings,
+          accounts: state.accounts,
+          attempts: state.attempts,
+          lockedUntil: state.lockedUntil,
         }),
       );
     } catch {
       /* noop */
     }
-  }, [state.students, state.courses, state.payments, state.settings]);
+  }, [state.students, state.courses, state.payments, state.settings, state.accounts, state.attempts, state.lockedUntil]);
 
   const me = useMemo(() => {
     if (!state.session || state.session.role !== 'student') return null;

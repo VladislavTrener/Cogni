@@ -3,23 +3,20 @@
  */
 
 import React from 'react';
-import type { Role } from '../data';
-import { TEACHER_NAME, USERS } from '../data';
 import { useStore } from '../store';
 import { IconChalk, IconRefresh, IconShield, IconUser, Logo, Toasts } from '../components';
-
-const ROLE_LABEL: Record<Role, string> = { student: 'Ученик', teacher: 'Учитель', admin: 'Админ' };
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { state, dispatch } = useStore();
   const session = state.session;
 
+  const account = session ? state.accounts.find((a) => a.id === session.userId || a.studentId === session.userId) ?? null : null;
   const user = session
     ? session.role === 'student'
       ? state.students.find((s) => s.id === session.userId)
-      : session.role === 'teacher'
-        ? { name: TEACHER_NAME, color: '#163326' }
-        : { name: 'Алексей Ким', color: '#152420' }
+      : account
+        ? { name: account.name, color: session.role === 'teacher' ? '#163326' : '#152420' }
+        : { name: session.role === 'teacher' ? 'Преподаватель' : 'Администратор', color: '#152420' }
     : null;
 
   return (
@@ -28,20 +25,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <Logo />
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* переключатель ролей (демо) */}
-            <div className="hidden md:flex items-center gap-1 rounded-lg bg-pine-900 border border-pine-800 p-1">
-              {(['student', 'teacher', 'admin'] as Role[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => dispatch({ type: 'SWITCH_ROLE', role: r })}
-                  className={`px-3 py-1.5 rounded-md text-[12px] font-bold transition-all ${
-                    session?.role === r ? 'bg-pine-700 text-paper' : 'text-pine-100/60 hover:text-paper'
-                  }`}
-                >
-                  {ROLE_LABEL[r]}
-                </button>
-              ))}
-            </div>
+            {account && (
+              <span className="rounded-full bg-pine-900 border border-pine-800 px-2.5 py-1 text-[10.5px] font-bold tracking-wide text-pine-100/70 uppercase">
+                {account.role === 'student' ? 'Ученик' : account.role === 'teacher' ? 'Учитель' : 'Админ'}
+              </span>
+            )}
             {user && (
               <span className="inline-flex items-center gap-2.5 rounded-lg border border-pine-800 bg-pine-900 pl-1.5 pr-3 py-1">
                 <span
@@ -71,7 +59,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             Когнитив.Про · интерактивный прототип учебной платформы · роли: ученик — учитель — администратор
           </p>
           <div className="flex items-center gap-4 text-[12px] text-inkmut">
-            <span className="inline-flex items-center gap-1.5"><IconUser className="w-3.5 h-3.5" /> {USERS.length} демо-аккаунтов</span>
+            <span className="inline-flex items-center gap-1.5"><IconUser className="w-3.5 h-3.5" /> {state.accounts.length} аккаунтов</span>
             <span className="inline-flex items-center gap-1.5"><IconChalk className="w-3.5 h-3.5" /> 9 тренажёров</span>
             <span className="inline-flex items-center gap-1.5"><IconShield className="w-3.5 h-3.5" /> оплата на самозанятого</span>
             <button

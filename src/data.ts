@@ -14,7 +14,10 @@ export type TrainerId =
   | 'sequence'
   | 'addCount'
   | 'addSmart'
-  | 'addCosmos';
+  | 'addCosmos'
+  | 'sub10'
+  | 'sub20'
+  | 'mix20';
 
 export interface Direction {
   id: DirectionId;
@@ -146,6 +149,42 @@ export const SEED_COURSES: Course[] = [
     ],
   },
   {
+    id: 'c-count-sub10',
+    directionId: 'count',
+    title: 'Вычитание от 10',
+    subtitle: 'Все случаи вычитания из 10 — с цифрами от 0 до 9. Ошибка сразу показывает верный ответ, в конце блока — кнопка «Повторить»',
+    level: 1,
+    age: '6–8 лет',
+    price: 1500,
+    validityMonths: 3,
+    published: true,
+    lessons: [{ id: 'ls-sub10-1', title: 'Вычитание от 10: все цифры', kind: 'trainer', minutes: 10, trainer: 'sub10' }],
+  },
+  {
+    id: 'c-count-sub20',
+    directionId: 'count',
+    title: 'Вычитание от 20',
+    subtitle: 'Все случаи вычитания из 20 — с цифрами от 0 до 20. Ошибка показывает ответ, блок повторяется до уверенности',
+    level: 1,
+    age: '7–9 лет',
+    price: 1500,
+    validityMonths: 3,
+    published: true,
+    lessons: [{ id: 'ls-sub20-1', title: 'Вычитание от 20: все цифры', kind: 'trainer', minutes: 10, trainer: 'sub20' }],
+  },
+  {
+    id: 'c-count-mix20',
+    directionId: 'count',
+    title: 'Сложение и вычитание до 20',
+    subtitle: 'Смешанные примеры: сложение и вычитание с числами до 20 вперемешку. Тренирует переключение между операциями',
+    level: 2,
+    age: '7–10 лет',
+    price: 1700,
+    validityMonths: 3,
+    published: true,
+    lessons: [{ id: 'ls-mix20-1', title: 'Микс: сложение и вычитание до 20', kind: 'trainer', minutes: 12, trainer: 'mix20' }],
+  },
+  {
     id: 'c-mem-nback',
     directionId: 'memory',
     title: 'N-back: тренажёр рабочей памяти',
@@ -190,7 +229,8 @@ export const SEED_STUDENTS: Student[] = [
     streak: 6,
     registeredAt: now - 40 * DAY_MS,
     accessUntil: { 'c-count-mult': now + 50 * DAY_MS, 'c-count-add': now + 62 * DAY_MS },
-    password: 'misha2016',
+    phone: '+7 900 111-22-01',
+    email: 'misha@demo.ru',
   },
   {
     id: 'anya',
@@ -204,7 +244,8 @@ export const SEED_STUDENTS: Student[] = [
     streak: 0,
     registeredAt: now - DAY_MS, // свежая регистрация — идёт демо-доступ
     accessUntil: {},
-    password: 'anya2017',
+    phone: '+7 900 111-22-02',
+    email: 'anya@demo.ru',
   },
   {
     id: 'vera',
@@ -218,7 +259,8 @@ export const SEED_STUDENTS: Student[] = [
     streak: 11,
     registeredAt: now - 60 * DAY_MS,
     accessUntil: { 'c-count-quest': now + 30 * DAY_MS, 'c-mem-nback': now + 25 * DAY_MS },
-    password: 'vera2015',
+    phone: '+7 900 111-22-03',
+    email: 'vera@demo.ru',
   },
   {
     id: 'lev',
@@ -232,7 +274,8 @@ export const SEED_STUDENTS: Student[] = [
     streak: 14,
     registeredAt: now - 75 * DAY_MS,
     accessUntil: { 'c-count-mult': now + 15 * DAY_MS, 'c-count-quest': now + 45 * DAY_MS },
-    password: 'lev2014',
+    phone: '+7 900 111-22-04',
+    email: 'lev@demo.ru',
   },
   {
     id: 'polina',
@@ -246,21 +289,46 @@ export const SEED_STUDENTS: Student[] = [
     streak: 3,
     registeredAt: now - 30 * DAY_MS,
     accessUntil: { 'c-count-mult': now + 60 * DAY_MS },
-    password: 'polina2016',
+    phone: '+7 900 111-22-05',
+    email: 'polina@demo.ru',
   },
 ];
 
-export const USERS: UserAccount[] = [
-  ...SEED_STUDENTS.map((s) => ({ id: s.id, role: 'student' as Role, name: s.name, title: `ученик · группа ${s.group}` })),
-  { id: 'teacher', role: 'teacher', name: 'Марина Ветрова', title: 'преподаватель' },
-  { id: 'admin', role: 'admin', name: 'Алексей Ким', title: 'администратор' },
+/* ================= аккаунты (вход и пароли) ================= */
+
+export interface Account {
+  id: string;
+  role: Role;
+  name: string;
+  /** логин: для учеников — email, для персонала — короткий логин */
+  login: string;
+  password: string;
+  /** связь с профилем ученика (только для role === 'student') */
+  studentId?: string;
+}
+
+export const SEED_ACCOUNTS: Account[] = [
+  { id: 'acc-admin', role: 'admin', name: 'Администратор', login: 'admin', password: '1234567890' },
+  { id: 'acc-teacher', role: 'teacher', name: 'Бичурин В. А.', login: 'bichurin', password: '1234567890' },
+  { id: 'acc-misha', role: 'student', name: 'Миша Орлов', login: 'misha@demo.ru', password: 'misha2016', studentId: 'misha' },
+  { id: 'acc-anya', role: 'student', name: 'Аня Крылова', login: 'anya@demo.ru', password: 'anya2017', studentId: 'anya' },
+  { id: 'acc-vera', role: 'student', name: 'Вера Сон', login: 'vera@demo.ru', password: 'vera2015', studentId: 'vera' },
+  { id: 'acc-lev', role: 'student', name: 'Лев Данилов', login: 'lev@demo.ru', password: 'lev2014', studentId: 'lev' },
+  { id: 'acc-polina', role: 'student', name: 'Полина Юдина', login: 'polina@demo.ru', password: 'polina2016', studentId: 'polina' },
 ];
 
-export const TEACHER_NAME = 'Марина Сергеевна Ветрова';
+export const USERS: UserAccount[] = SEED_ACCOUNTS.map((a) => ({
+  id: a.id,
+  role: a.role,
+  name: a.name,
+  title: a.role === 'student' ? 'ученик' : a.role === 'teacher' ? 'преподаватель' : 'администратор',
+}));
+
+export const TEACHER_NAME = 'Бичурин В. А.';
 
 /** Получатель платежей — самозанятый (демо-реквизиты) */
 export const SELLER = {
-  name: 'Ветрова Марина Сергеевна',
+  name: 'Бичурин В. А.',
   status: 'Самозанятый',
   inn: '771548236017',
   platform: 'Когнитив.Про',

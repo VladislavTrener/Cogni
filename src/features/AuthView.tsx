@@ -1,32 +1,278 @@
 /**
  * Экран входа: слева «классная доска» с живым заголовком,
- * справа — выбор демо-роли (ученики с их статусом, преподаватель, администратор).
+ * справа — вход по логину/паролю и регистрация нового ученика.
+ * Защита: 3 неверные попытки → блокировка входа на 5 минут.
  */
 
-import { useMemo } from 'react';
-import { DIRECTIONS, SEED_COURSES, TEACHER_NAME, canUse, trialInfo } from '../data';
-import { useStore } from '../store';
+import { useMemo, useState } from 'react';
+import type { Account, Role, Student } from '../data';
+import { DIRECTIONS, SEED_COURSES } from '../data';
+import { LOCK_MS, MAX_ATTEMPTS, useStore } from '../store';
 import {
   Glyphs,
   IconArrowR,
-  IconChalk,
+  IconLock,
   IconRefresh,
-  IconShield,
   IconUser,
   Logo,
   Scramble,
+  Spinner,
   Toasts,
   useReducedMotion,
 } from '../components';
 
-export default function AuthView() {
+const inputCls =
+  'w-full rounded-lg border border-line bg-card px-4 py-3 text-[14px] text-ink outline-none placeholder:text-inkmut/50 focus:border-pine-700 transition-colors';
+
+function AuthPanel() {
   const { state, dispatch } = useStore();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+
+  // ---- вход ----
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginErr, setLoginErr] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  // ---- регистрация ----
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPass, setRegPass] = useState('');
+  const [regAgree, setRegAgree] = useState(false);
+  const [regErr, setRegErr] = useState<string | null>(null);
+
+  const lockLeft = (lg: string) => {
+    const until = state.lockedUntil[lg];
+    if (!until) return 0;
+    return Math.max(0, Math.ceil((until - Date.now()) / 1000));
+  };
+
+  const doLogin = () => {
+    const lg = login.trim().toLowerCase();
+    if (!lg || !password) {
+      setLoginErr('Введите логин и пароль');
+      return;
+    }
+    const locked = lockLeft(lg);
+    if (locked > 0) {
+      setLoginErr(`Вход заблокирован. Подождите ${Math.floor(locked / 60)}:${String(locked % 60).padStart(2, '0')}`);
+      return;
+    }
+    const acc = state.accounts.find((a) => a.login.toLowerCase() === lg);
+    if (!acc || acc.password !== password) {
+      dispatch({ type: 'ATTEMPT_FAIL', login: lg });
+      const fails = (state.attempts[lg] ?? 0) + 1;
+      const left = MAX_ATTEMPTS - fails;
+      setLoginErr(
+        left > 0
+          ? `Неверный логин или пароль. Осталось попыток: ${left}`
+          : 'Слишком много попыток. Вход заблокирован на 5 минут.',
+      );
+      return;
+    }
+    setLoginErr(null);
+    setPending(true);
+    setTimeout(() => {
+      const userId = acc.role === 'student' ? (acc.studentId ?? acc.id) : acc.id;
+      dispatch({ type: 'LOGIN', userId, role: acc.role });
+    }, 450);
+  };
+
+  const doRegister = () => {
+    const email = regEmail.trim().toLowerCase();
+    if (!regName.trim()) return setRegErr('Укажите имя');
+    if (!regPhone.trim()) return setRegErr('Укажите телефон');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setRegErr('Укажите корректный e-mail');
+    if (regPass.length < 6) return setRegErr('Пароль должен быть не короче 6 символов');
+    if (!regAgree) return setRegErr('Нужно согласиться с офертой');
+    if (state.accounts.some((a) => a.login.toLowerCase() === email)) return setRegErr('Этот e-mail уже зарегистрирован');
+
+    setRegErr(null);
+    setPending(true);
+    setTimeout(() => {
+      const id = `st-${Date.now()}`;
+      const student: Student = {
+        id,
+        name: regName.trim(),
+        age: 9,
+        group: 'А',
+        color: ['#ff8a3d', '#2fa8dc', '#1fa97a', '#e8a912', '#f05d50'][Math.floor(Math.random() * 5)],
+        purchased: [],
+        done: [],
+        points: 0,
+        streak: 0,
+        registeredAt: Date.now(),
+        accessUntil: {},
+        phone: regPhone.trim(),
+        email,
+      };
+      const account: Account = {
+        id: `acc-${id}`,
+        role: 'student',
+        name: student.name,
+        login: email,
+        password: regPass,
+        studentId: id,
+      };
+      dispatch({ type: 'REGISTER', account, student });
+      dispatch({ type: 'LOGIN', userId: id, role: 'student' });
+    }, 450);
+  };
+
+  const demo = [
+    { label: 'Ученик (демо)', login: 'misha@demo.ru', pass: 'misha2016' },
+    { label: 'Преподаватель', login: 'bichurin', pass: '1234567890' },
+    { label: 'Администратор', login: 'admin', pass: '1234567890' },
+  ];
+
+  return (
+    <div className="w-full max-w-md">
+      <div className="mb-6">
+        <p className="font-display text-[11px] tracking-[0.3em] text-inksoft mb-2">ВХОД В КАБИНЕТ</p>
+        <h2 className="font-display font-700 text-2xl text-ink">
+          {mode === 'login' ? 'С возвращением!' : 'Регистрация ученика'}
+        </h2>
+      </div>
+
+      {/* переключатель вход/регистрация */}
+      <div className="mb-5 grid grid-cols-2 rounded-lg border border-line bg-card p-1">
+        {(['login', 'register'] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => {
+              setMode(m);
+              setLoginErr(null);
+              setRegErr(null);
+            }}
+            className={`rounded-md py-2 font-display text-[12px] tracking-[0.08em] transition-all ${
+              mode === m ? 'bg-pine-900 text-paper' : 'text-inksoft hover:text-ink'
+            }`}
+          >
+            {m === 'login' ? 'ВХОД' : 'РЕГИСТРАЦИЯ'}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'login' ? (
+        <div className="space-y-3">
+          <input
+            className={inputCls}
+            placeholder="Логин (e-mail для учеников)"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && doLogin()}
+            autoComplete="username"
+          />
+          <input
+            className={inputCls}
+            type="password"
+            placeholder="Пароль"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && doLogin()}
+            autoComplete="current-password"
+          />
+          {loginErr && (
+            <p className="flex items-start gap-2 rounded-lg bg-coral/10 px-3.5 py-2.5 text-[13px] font-semibold text-coral">
+              <IconLock className="w-4 h-4 mt-0.5 shrink-0" /> {loginErr}
+            </p>
+          )}
+          <button
+            onClick={doLogin}
+            disabled={pending}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-pine-900 py-3 font-display text-[14px] font-700 tracking-wide text-paper transition-all hover:bg-pine-700 disabled:opacity-50"
+          >
+            {pending ? <Spinner className="w-4 h-4" /> : (
+              <>
+                ВОЙТИ <IconArrowR className="w-4 h-4" />
+              </>
+            )}
+          </button>
+
+          <div className="rounded-lg border border-dashed border-ink/20 px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-inkmut mb-2">Быстрый демо-вход</p>
+            <div className="flex flex-wrap gap-1.5">
+              {demo.map((d) => (
+                <button
+                  key={d.login}
+                  onClick={() => {
+                    setLogin(d.login);
+                    setPassword(d.pass);
+                    setLoginErr(null);
+                  }}
+                  className="rounded-md border border-ink/15 px-2.5 py-1 text-[11.5px] font-semibold text-inksoft transition-colors hover:border-pine-700 hover:text-ink"
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <input className={inputCls} placeholder="Имя и фамилия" value={regName} onChange={(e) => setRegName(e.target.value)} />
+          <input className={inputCls} placeholder="Телефон (+7 …)" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} inputMode="tel" />
+          <input className={inputCls} placeholder="E-mail" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} inputMode="email" />
+          <input className={inputCls} type="password" placeholder="Пароль (мин. 6 символов)" value={regPass} onChange={(e) => setRegPass(e.target.value)} />
+
+          <label className="flex items-start gap-2.5 rounded-lg border border-line bg-card px-3.5 py-3 cursor-pointer">
+            <input type="checkbox" checked={regAgree} onChange={(e) => setRegAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#1fa97a]" />
+            <span className="text-[12.5px] text-inksoft leading-snug">
+              Я согласен(на) с{' '}
+              <a href="/oferta.txt" target="_blank" rel="noreferrer" className="font-bold text-pine-700 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>
+                офертой
+              </a>{' '}
+              на оказание образовательных услуг
+            </span>
+          </label>
+
+          {regErr && (
+            <p className="flex items-start gap-2 rounded-lg bg-coral/10 px-3.5 py-2.5 text-[13px] font-semibold text-coral">
+              <IconLock className="w-4 h-4 mt-0.5 shrink-0" /> {regErr}
+            </p>
+          )}
+          <button
+            onClick={doRegister}
+            disabled={pending}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-pine-900 py-3 font-display text-[14px] font-700 tracking-wide text-paper transition-all hover:bg-pine-700 disabled:opacity-50"
+          >
+            {pending ? <Spinner className="w-4 h-4" /> : (
+              <>
+                СОЗДАТЬ АККАУНТ <IconArrowR className="w-4 h-4" />
+              </>
+            )}
+          </button>
+          <p className="text-center text-[11.5px] text-inkmut">
+            Новым ученикам — {state.settings.trialDays} дня демо-доступа ко всем курсам
+          </p>
+        </div>
+      )}
+
+      <div className="mt-6 flex items-center justify-between rounded-lg border border-dashed border-ink/20 px-4 py-3">
+        <p className="text-[12px] text-inksoft leading-snug max-w-[230px]">
+          {MAX_ATTEMPTS} неверные попытки — блокировка входа на 5 минут.
+        </p>
+        <button
+          onClick={() => {
+            dispatch({ type: 'RESET' });
+            dispatch({ type: 'TOAST', text: 'Демо-данные сброшены к исходным', tone: 'info' });
+          }}
+          className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 px-3 py-1.5 text-[12px] font-semibold text-inksoft hover:text-ink hover:border-ink/35 transition-colors"
+        >
+          <IconRefresh className="w-3.5 h-3.5" /> Сбросить
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthView() {
+  const { state } = useStore();
   const reduced = useReducedMotion();
 
   const words = useMemo(() => DIRECTIONS.map((d) => d.label), []);
   const lessonCount = SEED_COURSES.reduce((s, c) => s + c.lessons.length, 0);
-
-  const login = (userId: string, role: 'student' | 'teacher' | 'admin') => dispatch({ type: 'LOGIN', userId, role });
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.2fr_1fr]">
@@ -63,7 +309,7 @@ export default function AuthView() {
             </span>
             <span className="hidden sm:block h-4 w-px bg-pine-700" />
             <span className="text-[13px] text-pine-100/60">
-              {SEED_COURSES.length} курсов · {lessonCount} уроков · 9 тренажёров · метод Лейтнера
+              {SEED_COURSES.length} курсов · {lessonCount} уроков · 12 тренажёров · метод Лейтнера
             </span>
           </div>
         </div>
@@ -75,117 +321,9 @@ export default function AuthView() {
         </div>
       </div>
 
-      {/* ---- правая часть: вход ---- */}
+      {/* ---- правая часть: вход / регистрация ---- */}
       <div className="paper-grid flex items-center justify-center px-5 py-12 lg:py-8">
-        <div className="w-full max-w-md">
-          <div className="mb-7">
-            <p className="font-display text-[11px] tracking-[0.3em] text-inksoft mb-2">ВХОД В КАБИНЕТ</p>
-            <h2 className="font-display font-700 text-2xl text-ink">Кто сегодня занимается?</h2>
-          </div>
-
-          <div className="space-y-2.5">
-            {state.students.map((student, i) => {
-              const trial = trialInfo(student, state.settings.trialDays);
-              const activeCourses = state.courses.filter((c) => canUse(student, c.id, state.settings.trialDays)).length;
-              return (
-                <button
-                  key={student.id}
-                  onClick={() => login(student.id, 'student')}
-                  className="card-rise group w-full flex items-center gap-4 rounded-xl border border-line bg-card px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-ink/25"
-                  style={{ ['--d' as string]: `${i * 70}ms` }}
-                >
-                  <span className="flex h-11 w-11 items-center justify-center rounded-lg font-display font-700 text-paper text-sm" style={{ background: student.color }}>
-                    {student.name.split(' ').map((w) => w[0]).join('')}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold text-ink">{student.name}</span>
-                      <span className="rounded-full bg-ink/6 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-inksoft uppercase">
-                        ученик · гр. {student.group}
-                      </span>
-                      {trial.active && (
-                        <span className="rounded-full bg-mint/14 px-2 py-0.5 text-[10px] font-bold tracking-wide text-mint uppercase">
-                          демо · ещё {trial.daysLeft} дн.
-                        </span>
-                      )}
-                    </span>
-                    <span className="block text-[12.5px] text-inksoft truncate">
-                      {activeCourses > 0
-                        ? `доступно курсов: ${activeCourses} · есть прогресс`
-                        : trial.active
-                          ? 'демо-доступ: все курсы открыты бесплатно'
-                          : 'демо-период завершён · курсы по оплате'}
-                    </span>
-                  </span>
-                  <span className="text-inkmut transition-all group-hover:text-ink group-hover:translate-x-1">
-                    <IconArrowR className="w-5 h-5" />
-                  </span>
-                </button>
-              );
-            })}
-
-            <button
-              onClick={() => login('teacher', 'teacher')}
-              className="card-rise group w-full flex items-center gap-4 rounded-xl border border-line bg-card px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-ink/25"
-              style={{ ['--d' as string]: '420ms' }}
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-pine-800 text-pine-100">
-                <IconChalk className="w-5 h-5" />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="font-bold text-ink">{TEACHER_NAME}</span>
-                  <span className="rounded-full bg-mint/12 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-mint uppercase">преподаватель</span>
-                </span>
-                <span className="block text-[12.5px] text-inksoft">прогресс · статусы курсов · ученики и оплаты</span>
-              </span>
-              <span className="text-inkmut transition-all group-hover:text-ink group-hover:translate-x-1">
-                <IconArrowR className="w-5 h-5" />
-              </span>
-            </button>
-
-            <button
-              onClick={() => login('admin', 'admin')}
-              className="card-rise group w-full flex items-center gap-4 rounded-xl border border-line bg-card px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-ink/25"
-              style={{ ['--d' as string]: '490ms' }}
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-ink text-paper">
-                <IconShield className="w-5 h-5" />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="font-bold text-ink">Алексей Ким</span>
-                  <span className="rounded-full bg-coral/12 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-coral uppercase">администратор</span>
-                </span>
-                <span className="block text-[12.5px] text-inksoft">цены · сроки доступа · платежи · пользователи</span>
-              </span>
-              <span className="text-inkmut transition-all group-hover:text-ink group-hover:translate-x-1">
-                <IconArrowR className="w-5 h-5" />
-              </span>
-            </button>
-          </div>
-
-          <div className="mt-6 flex items-center justify-between rounded-lg border border-dashed border-ink/20 px-4 py-3">
-            <p className="text-[12.5px] text-inksoft leading-snug max-w-[240px]">
-              Это демо: роли переключаются без пароля, прогресс сохраняется в браузере.
-            </p>
-            <button
-              onClick={() => {
-                dispatch({ type: 'RESET' });
-                dispatch({ type: 'TOAST', text: 'Демо-данные сброшены к исходным', tone: 'info' });
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 px-3 py-1.5 text-[12px] font-semibold text-inksoft hover:text-ink hover:border-ink/35 transition-colors"
-            >
-              <IconRefresh className="w-3.5 h-3.5" />
-              Сбросить
-            </button>
-          </div>
-
-          <div className="mt-7 flex items-center gap-2 text-[11px] text-inkmut">
-            <IconUser className="w-3.5 h-3.5" />
-            демо-доступ {state.settings.trialDays} дня для новичков · оплата на {state.settings.trialDays > 0 ? 'самозанятого' : ''} · {reduced ? 'анимации отключены' : 'живой прототип'}
-          </div>
-        </div>
+        <AuthPanel />
       </div>
 
       <Toasts />

@@ -7,7 +7,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../../store';
 import { beep, confettiBurst, useReducedMotion } from '../../components';
-import { LOGIC_TYPES, LogicQ, byType, mixedSample } from './logicData';
+import type { LogicQ } from './logicData';
+
+export interface LogicTypeCfg {
+  id: number;
+  name: string;
+  desc: string;
+  emoji: string;
+  color: string;
+}
+
+/** Источник задач: позволяет использовать один тренажёр с разными банками */
+export interface LogicSource {
+  label: string;
+  types: LogicTypeCfg[];
+  typeOf: (n: number) => number;
+  byType: (t: number) => LogicQ[];
+  mixedSample: (count: number) => LogicQ[];
+}
 
 const PASS = 0.6; // зачёт от 60%
 const LETTERS = ['а', 'б', 'в', 'г', 'д', 'е'];
@@ -31,11 +48,13 @@ function speak(text: string) {
 const starsOf = (acc: number) => (acc >= 0.9 ? 3 : acc >= 0.75 ? 2 : acc >= PASS ? 1 : 0);
 
 export function LogicTrainer({
+  source,
   mode,
   alreadyDone,
   onPass,
   onClose,
 }: {
+  source: LogicSource;
   mode: number | 'mix';
   alreadyDone: boolean;
   onPass: () => void;
@@ -44,14 +63,14 @@ export function LogicTrainer({
   const { me } = useStore();
   const reduced = useReducedMotion();
 
-  const type = mode === 'mix' ? null : LOGIC_TYPES[mode];
+  const type = mode === 'mix' ? null : source.types[mode];
   const title = mode === 'mix' ? 'Большой тест' : type!.name;
   const emoji = mode === 'mix' ? '🏆' : type!.emoji;
   const accent = mode === 'mix' ? '#e8a912' : type!.color;
 
   // очередь задач: сначала весь набор, при разборе ошибок — только ошибки
   const [queue, setQueue] = useState<LogicQ[]>(() =>
-    mode === 'mix' ? mixedSample(20) : byType(mode),
+    mode === 'mix' ? source.mixedSample(20) : source.byType(mode),
   );
   const [idx, setIdx] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
@@ -109,7 +128,7 @@ export function LogicTrainer({
   };
 
   const restart = () => {
-    setQueue(mode === 'mix' ? mixedSample(20) : byType(mode));
+    setQueue(mode === 'mix' ? source.mixedSample(20) : source.byType(mode));
     setIdx(0);
     setChosen(null);
     setCorrectCount(0);
@@ -134,7 +153,7 @@ export function LogicTrainer({
       {/* шапка */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="font-display text-[11px] tracking-[0.22em]" style={{ color: accent }}>
-          ЛОГИКА МАЛЫШАМ · {title.toUpperCase()}
+          {source.label.toUpperCase()} · {title.toUpperCase()}
         </p>
         <div className="flex items-center gap-2">
           {stage === 'play' && (
@@ -161,7 +180,7 @@ export function LogicTrainer({
           <h4 className="mt-2 font-display font-900 text-2xl text-ink">{title}</h4>
           <p className="mt-2 text-[14px] leading-relaxed text-inksoft">
             {mode === 'mix'
-              ? 'Случайные 20 задач из всех шести типов. Настоящая проверка для самых смелых!'
+              ? `Случайные 20 задач из всех ${source.types.length} типов. Настоящая проверка для самых смелых!`
               : `${type!.desc}. В этом задании ${total} задач. Читай внимательно — или слушай, нажав на динамик!`}
           </p>
           <button

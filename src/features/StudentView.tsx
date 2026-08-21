@@ -45,6 +45,8 @@ import { StroopTrainer } from './trainers/stroop';
 import { AdditionCosmosTrainer, AdditionCountTrainer, AdditionSmartTrainer } from './trainers/addition';
 import { SubtractionTrainer } from './trainers/subtraction';
 import { LogicTrainer } from './trainers/logic';
+import { KIDS_LOGIC_SOURCE } from './trainers/logicData';
+import { SCHOOL_LOGIC_SOURCE } from './trainers/logicData2';
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
 
@@ -297,7 +299,18 @@ function LessonModal({ course, lesson, onClose }: { course: Course; lesson: Less
           )}
           {(t === 'logic0' || t === 'logic1' || t === 'logic2' || t === 'logic3' || t === 'logic4' || t === 'logic5' || t === 'logicMix') && (
             <LogicTrainer
+              source={KIDS_LOGIC_SOURCE}
               mode={t === 'logicMix' ? 'mix' : Number(t.slice(5))}
+              alreadyDone={alreadyDone}
+              onClose={onClose}
+              onPass={pass}
+            />
+          )}
+          {(t === 'slogic0' || t === 'slogic1' || t === 'slogic2' || t === 'slogic3' || t === 'slogic4' ||
+            t === 'slogic5' || t === 'slogic6' || t === 'slogic7' || t === 'slogic8' || t === 'slogic9' || t === 'slogicMix') && (
+            <LogicTrainer
+              source={SCHOOL_LOGIC_SOURCE}
+              mode={t === 'slogicMix' ? 'mix' : Number(t.slice(6))}
               alreadyDone={alreadyDone}
               onClose={onClose}
               onPass={pass}

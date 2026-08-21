@@ -210,3 +210,12 @@ export function mixedSample(count: number): LogicQ[] {
   }
   return pool.slice(0, count);
 }
+
+/** Источник для курса «Логика малышам» */
+export const KIDS_LOGIC_SOURCE = {
+  label: 'Логика малышам',
+  types: LOGIC_TYPES,
+  typeOf,
+  byType,
+  mixedSample,
+};

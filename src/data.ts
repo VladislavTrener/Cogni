@@ -28,7 +28,18 @@ export type TrainerId =
   | 'logic3'
   | 'logic4'
   | 'logic5'
-  | 'logicMix';
+  | 'logicMix'
+  | 'slogic0'
+  | 'slogic1'
+  | 'slogic2'
+  | 'slogic3'
+  | 'slogic4'
+  | 'slogic5'
+  | 'slogic6'
+  | 'slogic7'
+  | 'slogic8'
+  | 'slogic9'
+  | 'slogicMix';
 
 export interface Direction {
   id: DirectionId;
@@ -251,6 +262,30 @@ export const SEED_COURSES: Course[] = [
       { id: 'ls-logic-4', title: 'Семья и отношения', kind: 'trainer', minutes: 10, trainer: 'logic4' },
       { id: 'ls-logic-5', title: 'Слова-наоборот (антонимы)', kind: 'trainer', minutes: 10, trainer: 'logic5' },
       { id: 'ls-logic-mix', title: 'Большой тест: 20 задач вперемешку', kind: 'test', minutes: 12, trainer: 'logicMix' },
+    ],
+  },
+  {
+    id: 'c-logic-school',
+    directionId: 'logic',
+    title: 'Логика: 2–4 класс: 149 задач',
+    subtitle: 'Для школьников. Десять типов задач — умозаключения, анаграммы, сравнения, цветные слова, семья, возраст, «или — или» и другие — плюс большой тест. Задачи озвучиваются голосом',
+    level: 2,
+    age: '8–11 лет',
+    price: 2100,
+    validityMonths: 3,
+    published: true,
+    lessons: [
+      { id: 'ls-slogic-0', title: 'Умозаключения', kind: 'trainer', minutes: 10, trainer: 'slogic0' },
+      { id: 'ls-slogic-1', title: 'Переставь буквы (анаграммы)', kind: 'trainer', minutes: 10, trainer: 'slogic1' },
+      { id: 'ls-slogic-2', title: 'Кто выше? (сравнения)', kind: 'trainer', minutes: 10, trainer: 'slogic2' },
+      { id: 'ls-slogic-3', title: 'Цветные слова: буквы', kind: 'trainer', minutes: 10, trainer: 'slogic3' },
+      { id: 'ls-slogic-4', title: 'Семья и родственники', kind: 'trainer', minutes: 10, trainer: 'slogic4' },
+      { id: 'ls-slogic-5', title: 'Возраст и время', kind: 'trainer', minutes: 10, trainer: 'slogic5' },
+      { id: 'ls-slogic-6', title: 'Найди лишнее', kind: 'trainer', minutes: 10, trainer: 'slogic6' },
+      { id: 'ls-slogic-7', title: 'Кого больше?', kind: 'trainer', minutes: 10, trainer: 'slogic7' },
+      { id: 'ls-slogic-8', title: 'Цветные слова: расположение', kind: 'trainer', minutes: 10, trainer: 'slogic8' },
+      { id: 'ls-slogic-9', title: 'Или — или (двойные условия)', kind: 'trainer', minutes: 10, trainer: 'slogic9' },
+      { id: 'ls-slogic-mix', title: 'Большой тест: 20 задач вперемешку', kind: 'test', minutes: 12, trainer: 'slogicMix' },
     ],
   },
 ];

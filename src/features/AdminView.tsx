@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Course, SEED_STUDENTS, canUse, dirById, fmtDate, fmtRub, hasAccess, initials, trialInfo } from '../data';
 import { useStore } from '../store';
-import { CountUp, IconClose, IconKey, IconRefresh, IconTrash, Modal, Reveal, Spark } from '../components';
+import { CountUp, IconClose, IconKey, IconQr, IconRefresh, IconTrash, Modal, Reveal, Spark } from '../components';
 
 type AdminTab = 'access' | 'money' | 'users';
 
@@ -87,8 +87,8 @@ export default function AdminView() {
 
   const studentById = (id: string) => state.students.find((s) => s.id === id);
   const deleteStudent = deleteId ? studentById(deleteId) : null;
-  const passStudent = passId ? studentById(passId) : null;
-  const passAccount = passId ? state.accounts.find((a) => a.studentId === passId) ?? null : null;
+  // passId хранит id аккаунта (подходит и для учеников, и для персонала)
+  const passAccount = passId ? state.accounts.find((a) => a.id === passId) ?? null : null;
   const extendStudent = extendId ? studentById(extendId) : null;
 
   const tabs: { id: AdminTab; label: string }[] = [
@@ -147,6 +147,68 @@ export default function AdminView() {
             </div>
             <div className="ml-auto">
               <NumInput value={trialDays} suffix="дн." min={0} label="Длительность демо-периода" onCommit={(n) => dispatch({ type: 'SET_TRIAL_DAYS', days: n })} />
+            </div>
+          </div>
+
+          {/* оплата: QR-код, который видят ученики */}
+          <div className="rounded-xl border border-line bg-card px-5 py-4">
+            <div className="flex flex-wrap items-center gap-5">
+              <div className="min-w-[220px] flex-1">
+                <p className="font-display text-[10.5px] tracking-[0.22em] text-inksoft">ОПЛАТА · QR-КОД ДЛЯ УЧЕНИКОВ</p>
+                <p className="text-[12.5px] text-inksoft mt-1 leading-relaxed">
+                  Этот QR показывается ученикам при выборе способа «СБП». Назначение платежа подставляется автоматически:{' '}
+                  <b className="text-ink">Когнитив.ПРО курс «название курса»</b>.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-pine-900 px-4 py-2 text-[12.5px] font-bold text-paper transition-colors hover:bg-pine-700">
+                    <IconQr className="w-4 h-4" />
+                    {state.settings.qr ? 'Заменить QR' : 'Загрузить QR (PNG/JPG)'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!file.type.startsWith('image/')) {
+                          dispatch({ type: 'TOAST', text: 'Нужен файл изображения (PNG или JPG)', tone: 'warn' });
+                          return;
+                        }
+                        if (file.size > 1_500_000) {
+                          dispatch({ type: 'TOAST', text: 'Файл больше 1,5 МБ — возьмите QR поменьше', tone: 'warn' });
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = () => dispatch({ type: 'SET_PAYMENT_QR', dataUrl: String(reader.result) });
+                        reader.readAsDataURL(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {state.settings.qr && (
+                    <button
+                      onClick={() => dispatch({ type: 'SET_PAYMENT_QR', dataUrl: null })}
+                      className="rounded-lg border border-ink/15 px-4 py-2 text-[12.5px] font-bold text-inksoft transition-colors hover:border-coral hover:text-coral"
+                    >
+                      Убрать QR
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-1.5">
+                {state.settings.qr ? (
+                  <img
+                    src={state.settings.qr}
+                    alt="Текущий QR-код для оплаты"
+                    className="h-36 w-36 rounded-lg border border-line bg-white object-contain p-1.5"
+                  />
+                ) : (
+                  <span className="flex h-36 w-36 items-center justify-center rounded-lg border-2 border-dashed border-ink/20 text-center text-[11px] leading-snug text-inkmut">
+                    QR не загружен —<br />ученики видят заглушку
+                  </span>
+                )}
+                <span className="text-[10.5px] text-inkmut">так видят ученики</span>
+              </div>
             </div>
           </div>
 
@@ -252,7 +314,65 @@ export default function AdminView() {
       )}
 
       {tab === 'users' && (
-        <Reveal key="users" className="mt-6">
+        <Reveal key="users" className="mt-6 space-y-5">
+          {/* персонал: администраторы и преподаватель */}
+          <div className="overflow-x-auto rounded-xl border border-line bg-card">
+            <table className="w-full min-w-[720px] text-left">
+              <thead>
+                <tr className="border-b border-line text-[11px] uppercase tracking-[0.14em] text-inkmut">
+                  <th className="px-5 py-3.5 font-bold">Персонал</th>
+                  <th className="px-5 py-3.5 font-bold">Роль</th>
+                  <th className="px-5 py-3.5 font-bold">Логин</th>
+                  <th className="px-5 py-3.5 font-bold">Пароль</th>
+                  <th className="px-5 py-3.5 font-bold text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.accounts
+                  .filter((a) => a.role !== 'student')
+                  .map((a) => (
+                    <tr key={a.id} className="border-b border-line/60 last:border-0 text-[13.5px] hover:bg-ink/3">
+                      <td className="px-5 py-3.5">
+                        <span className="flex items-center gap-3">
+                          <span
+                            className="flex h-9 w-9 items-center justify-center rounded-lg font-display text-[12px] font-700 text-paper"
+                            style={{ background: a.role === 'admin' ? '#152420' : '#163326' }}
+                          >
+                            {initials(a.name)}
+                          </span>
+                          <span className="font-bold text-ink">{a.name}</span>
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                            a.role === 'admin' ? 'bg-coral/12 text-coral' : 'bg-mint/12 text-mint'
+                          }`}
+                        >
+                          {a.role === 'admin' ? 'администратор' : 'преподаватель'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 font-display text-[12.5px] text-ink">{a.login}</td>
+                      <td className="px-5 py-3.5 font-display text-[12.5px] text-ink">{a.password}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="flex justify-end">
+                          <button
+                            onClick={() => {
+                              setPassId(a.id);
+                              setNewPass('');
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-line bg-paper px-2.5 py-1.5 text-[11.5px] font-bold text-inksoft transition-colors hover:border-sky hover:text-sky"
+                          >
+                            <IconKey className="w-3.5 h-3.5" /> Сменить пароль
+                          </button>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
           <div className="overflow-x-auto rounded-xl border border-line bg-card">
             <table className="w-full min-w-[720px] text-left">
               <thead>
@@ -303,7 +423,8 @@ export default function AdminView() {
                           </button>
                           <button
                             onClick={() => {
-                              setPassId(s.id);
+                              const acc = state.accounts.find((a) => a.studentId === s.id);
+                              setPassId(acc?.id ?? s.id);
                               setNewPass('');
                             }}
                             className="inline-flex items-center gap-1 rounded-md border border-line bg-paper px-2.5 py-1.5 text-[11.5px] font-bold text-inksoft transition-colors hover:border-sky hover:text-sky"

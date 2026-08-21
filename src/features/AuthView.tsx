@@ -11,6 +11,8 @@ import { LOCK_MS, MAX_ATTEMPTS, useStore } from '../store';
 import {
   Glyphs,
   IconArrowR,
+  IconEye,
+  IconEyeOff,
   IconLock,
   IconRefresh,
   IconUser,
@@ -24,21 +26,46 @@ import {
 const inputCls =
   'w-full rounded-lg border border-line bg-card px-4 py-3 text-[14px] text-ink outline-none placeholder:text-inkmut/50 focus:border-pine-700 transition-colors';
 
-/**
- * Понятные варианты логинов для персонала (принимаются наравне с основными).
- * Работает независимо от сохранённых данных — помогает войти с первого раза.
- */
-const LOGIN_ALIASES: Record<string, string> = {
-  администратор: 'admin',
-  админ: 'admin',
-  administrator: 'admin',
-  root: 'admin',
-  teacher: 'bichurin',
-  бичурин: 'bichurin',
-  'бичурин в.а.': 'bichurin',
-  преподаватель: 'bichurin',
-  учитель: 'bichurin',
-};
+/** Поле пароля с кнопкой «показать / скрыть» */
+function PasswordField({
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+  autoComplete = 'current-password',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onEnter?: () => void;
+  placeholder: string;
+  autoComplete?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="relative block">
+      <input
+        className={`${inputCls} pr-11`}
+        type={visible ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
+        autoComplete={autoComplete}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className={`absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors ${
+          visible ? 'text-pine-700' : 'text-inkmut hover:text-ink'
+        }`}
+        aria-label={visible ? 'Скрыть пароль' : 'Показать пароль'}
+        title={visible ? 'Скрыть пароль' : 'Показать пароль'}
+      >
+        {visible ? <IconEyeOff className="w-[18px] h-[18px]" /> : <IconEye className="w-[18px] h-[18px]" />}
+      </button>
+    </span>
+  );
+}
 
 function AuthPanel() {
   const { state, dispatch } = useStore();
@@ -65,9 +92,7 @@ function AuthPanel() {
   };
 
   const doLogin = () => {
-    const raw = login.trim().toLowerCase();
-    // распознаём понятные варианты логинов (teacher → bichurin, администратор → admin и т.п.)
-    const lg = LOGIN_ALIASES[raw] ?? raw;
+    const lg = login.trim().toLowerCase();
     if (!lg || !password) {
       setLoginErr('Введите логин и пароль');
       return;
@@ -140,8 +165,9 @@ function AuthPanel() {
 
   const demo = [
     { label: 'Ученик (демо)', login: 'misha@demo.ru', pass: 'misha2016', hint: 'misha@demo.ru' },
-    { label: 'Преподаватель', login: 'bichurin', pass: '1234567890', hint: 'bichurin или «бичурин»' },
-    { label: 'Администратор', login: 'admin', pass: '1234567890', hint: 'admin или «администратор»' },
+    { label: 'Преподаватель', login: 'bichurin', pass: '1234567890', hint: 'bichurin' },
+    { label: 'Администратор', login: 'admin', pass: '1234567890', hint: 'admin' },
+    { label: 'School (контроль)', login: 'school', pass: '1234567890', hint: 'school' },
   ];
 
   return (
@@ -182,15 +208,7 @@ function AuthPanel() {
             onKeyDown={(e) => e.key === 'Enter' && doLogin()}
             autoComplete="username"
           />
-          <input
-            className={inputCls}
-            type="password"
-            placeholder="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && doLogin()}
-            autoComplete="current-password"
-          />
+          <PasswordField value={password} onChange={setPassword} onEnter={doLogin} placeholder="Пароль" />
           {loginErr && (
             <p className="flex items-start gap-2 rounded-lg bg-coral/10 px-3.5 py-2.5 text-[13px] font-semibold text-coral">
               <IconLock className="w-4 h-4 mt-0.5 shrink-0" /> {loginErr}
@@ -227,7 +245,7 @@ function AuthPanel() {
               ))}
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-inkmut">
-              Пароль у преподавателя и администратора — <b className="text-ink">1234567890</b>. Логины: <b className="text-ink">bichurin</b> (или «бичурин») и <b className="text-ink">admin</b> (или «администратор»).
+              Логины: <b className="text-ink">bichurin</b> (преподаватель), <b className="text-ink">admin</b> и <b className="text-ink">school</b> (администраторы). Пароль у всех троих — <b className="text-ink">1234567890</b>. У учеников логин — их e-mail.
             </p>
           </div>
         </div>
@@ -236,7 +254,13 @@ function AuthPanel() {
           <input className={inputCls} placeholder="Имя и фамилия" value={regName} onChange={(e) => setRegName(e.target.value)} />
           <input className={inputCls} placeholder="Телефон (+7 …)" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} inputMode="tel" />
           <input className={inputCls} placeholder="E-mail" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} inputMode="email" />
-          <input className={inputCls} type="password" placeholder="Пароль (мин. 6 символов)" value={regPass} onChange={(e) => setRegPass(e.target.value)} />
+          <PasswordField
+            value={regPass}
+            onChange={setRegPass}
+            onEnter={doRegister}
+            placeholder="Пароль (мин. 6 символов)"
+            autoComplete="new-password"
+          />
 
           <label className="flex items-start gap-2.5 rounded-lg border border-line bg-card px-3.5 py-3 cursor-pointer">
             <input type="checkbox" checked={regAgree} onChange={(e) => setRegAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#1fa97a]" />

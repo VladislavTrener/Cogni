@@ -16,6 +16,7 @@ import {
   fmtRub,
   hasAccess,
   monthWord,
+  paymentPurposeFor,
   trialInfo,
 } from '../data';
 import { useStore } from '../store';
@@ -468,7 +469,9 @@ function PurchaseModal({ course, onClose, onDone }: { course: Course; onClose: (
   const amount = plan === 'single' ? course.price : packagePrice;
   const item = plan === 'single' ? course.title : `Пакет «${d.label}» — ${packageCourses.length} курса(ов)`;
   const purpose =
-    plan === 'single' ? `Курс «${course.title}» — ${SELLER.platform}` : `Пакет «${d.label}» (${packageCourses.length} курса) — ${SELLER.platform}`;
+    plan === 'single'
+      ? paymentPurposeFor(course.title)
+      : paymentPurposeFor(`Пакет «${d.label}» (${packageCourses.length} курса)`);
   const accessMonths = plan === 'single' ? course.validityMonths : packageCourses[0]?.validityMonths ?? course.validityMonths;
   const accessUntilDate = Date.now() + accessMonths * MONTH;
   const cardValid = num.replace(/\s/g, '').length >= 12 && exp.length >= 5 && cvc.length === 3;
@@ -612,9 +615,17 @@ function PurchaseModal({ course, onClose, onDone }: { course: Course; onClose: (
               </div>
             ) : (
               <div className="flex items-center gap-4 rounded-lg border border-line bg-card p-4">
-                <FakeQr />
+                {state.settings.qr ? (
+                  <img
+                    src={state.settings.qr}
+                    alt="QR-код для оплаты"
+                    className="w-32 h-32 shrink-0 rounded-lg border border-line bg-white object-contain p-1"
+                  />
+                ) : (
+                  <FakeQr />
+                )}
                 <p className="text-[12.5px] text-inksoft leading-relaxed">
-                  Отсканируй QR в приложении банка и подтверди платёж. В демо оплата проходит автоматически.
+                  Отсканируй QR в приложении банка и подтверди платёж на имя: <b className="text-ink">{SELLER.name}</b> ({SELLER.status.toLowerCase()}, ИНН {SELLER.inn}). В демо оплата проходит автоматически.
                 </p>
               </div>
             )}
@@ -720,7 +731,7 @@ export default function StudentView() {
         courseIds: [c.id],
         amount: 0,
         item: c.title,
-        purpose: `Курс «${c.title}» — ${SELLER.platform}`,
+        purpose: paymentPurposeFor(c.title),
         method: '—',
       });
     } else {

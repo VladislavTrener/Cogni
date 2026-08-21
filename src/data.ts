@@ -82,6 +82,8 @@ export interface Payment {
 
 export interface Settings {
   trialDays: number;
+  /** QR-код для оплаты (dataURL изображения), загружается администратором; null — встроенная заглушка */
+  qr: string | null;
 }
 
 export interface UserAccount {
@@ -322,6 +324,7 @@ export interface Account {
 
 export const SEED_ACCOUNTS: Account[] = [
   { id: 'acc-admin', role: 'admin', name: 'Администратор', login: 'admin', password: '1234567890' },
+  { id: 'acc-school', role: 'admin', name: 'School', login: 'school', password: '1234567890' },
   { id: 'acc-teacher', role: 'teacher', name: 'Бичурин В. А.', login: 'bichurin', password: '1234567890' },
   { id: 'acc-misha', role: 'student', name: 'Миша Орлов', login: 'misha@demo.ru', password: 'misha2016', studentId: 'misha' },
   { id: 'acc-anya', role: 'student', name: 'Аня Крылова', login: 'anya@demo.ru', password: 'anya2017', studentId: 'anya' },
@@ -347,14 +350,17 @@ export const SELLER = {
   platform: 'Когнитив.Про',
 };
 
-export const SEED_SETTINGS: Settings = { trialDays: 3 };
+export const SEED_SETTINGS: Settings = { trialDays: 3, qr: null };
+
+/** Формат назначения платежа (на время отладки): «Когнитив.ПРО курс <название>» */
+export const paymentPurposeFor = (courseTitle: string) => `Когнитив.ПРО курс ${courseTitle}`;
 
 export const SEED_PAYMENTS: Payment[] = [
-  { id: 'p-seed-1', date: '07.02.2026', studentId: 'misha', studentName: 'Миша Орлов', item: 'Тренировка умножения', purpose: 'Курс «Тренировка умножения» — Когнитив.Про', amount: 1500, method: 'Карта', status: 'оплачен' },
-  { id: 'p-seed-2', date: '12.02.2026', studentId: 'lev', studentName: 'Лев Данилов', item: 'Космическая тетрадь: умножение в задачах', purpose: 'Курс «Космическая тетрадь: умножение в задачах» — Когнитив.Про', amount: 2200, method: 'СБП', status: 'оплачен' },
-  { id: 'p-seed-3', date: '18.02.2026', studentId: 'polina', studentName: 'Полина Юдина', item: 'Тренировка умножения', purpose: 'Курс «Тренировка умножения» — Когнитив.Про', amount: 1500, method: 'СБП', status: 'оплачен' },
-  { id: 'p-seed-4', date: '21.02.2026', studentId: 'vera', studentName: 'Вера Сон', item: 'N-back: тренажёр рабочей памяти', purpose: 'Курс «N-back: тренажёр рабочей памяти» — Когнитив.Про', amount: 2100, method: 'Карта', status: 'оплачен' },
-  { id: 'p-seed-5', date: '25.02.2026', studentId: 'misha', studentName: 'Миша Орлов', item: 'Тренировка сложения', purpose: 'Курс «Тренировка сложения» — Когнитив.Про', amount: 1900, method: 'Карта', status: 'оплачен' },
+  { id: 'p-seed-1', date: '07.02.2026', studentId: 'misha', studentName: 'Миша Орлов', item: 'Тренировка умножения', purpose: 'Когнитив.ПРО курс Тренировка умножения', amount: 1500, method: 'Карта', status: 'оплачен' },
+  { id: 'p-seed-2', date: '12.02.2026', studentId: 'lev', studentName: 'Лев Данилов', item: 'Космическая тетрадь: умножение в задачах', purpose: 'Когнитив.ПРО курс Космическая тетрадь: умножение в задачах', amount: 2200, method: 'СБП', status: 'оплачен' },
+  { id: 'p-seed-3', date: '18.02.2026', studentId: 'polina', studentName: 'Полина Юдина', item: 'Тренировка умножения', purpose: 'Когнитив.ПРО курс Тренировка умножения', amount: 1500, method: 'СБП', status: 'оплачен' },
+  { id: 'p-seed-4', date: '21.02.2026', studentId: 'vera', studentName: 'Вера Сон', item: 'N-back: тренажёр рабочей памяти', purpose: 'Когнитив.ПРО курс N-back: тренажёр рабочей памяти', amount: 2100, method: 'Карта', status: 'оплачен' },
+  { id: 'p-seed-5', date: '25.02.2026', studentId: 'misha', studentName: 'Миша Орлов', item: 'Тренировка сложения', purpose: 'Когнитив.ПРО курс Тренировка сложения', amount: 1900, method: 'Карта', status: 'оплачен' },
 ];
 
 /* ================= утилиты ================= */

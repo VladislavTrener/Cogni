@@ -125,6 +125,21 @@ export const IconTrash = ({ className = 'w-4 h-4' }: IconProps) => (
   </svg>
 );
 
+export const IconEye = ({ className = 'w-4 h-4' }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={`${base} ${className}`}>
+    <path d="M2.8 12S6.2 5.8 12 5.8 21.2 12 21.2 12 17.8 18.2 12 18.2 2.8 12 2.8 12z" />
+    <circle cx="12" cy="12" r="2.8" />
+  </svg>
+);
+
+export const IconEyeOff = ({ className = 'w-4 h-4' }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={`${base} ${className}`}>
+    <path d="M4 4l16 16" />
+    <path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c5.8 0 9.2 7 9.2 7a17 17 0 0 1-3.1 4M6 6.6A16.6 16.6 0 0 0 2.8 12S6.2 19 12 19a9.4 9.4 0 0 0 4-1" />
+    <path d="M9.5 9.6a3 3 0 0 0 4.2 4.2" />
+  </svg>
+);
+
 export const IconKey = ({ className = 'w-4 h-4' }: IconProps) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className={`${base} ${className}`}>
     <circle cx="8.5" cy="14.5" r="4.5" />

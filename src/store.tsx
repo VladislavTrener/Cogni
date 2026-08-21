@@ -40,6 +40,7 @@ export type Action =
   | { type: 'SET_PRICE'; courseId: string; price: number }
   | { type: 'SET_VALIDITY'; courseId: string; months: number }
   | { type: 'SET_TRIAL_DAYS'; days: number }
+  | { type: 'SET_PAYMENT_QR'; dataUrl: string | null }
   | { type: 'TOGGLE_PUBLISHED'; courseId: string }
   | { type: 'EXTEND_ACCESS'; studentId: string; days: number }
   | { type: 'DELETE_STUDENT'; studentId: string }
@@ -85,7 +86,7 @@ function init(): State {
           payments: Array.isArray(parsed.payments) ? parsed.payments : SEED_PAYMENTS,
           settings:
             parsed.settings && typeof parsed.settings.trialDays === 'number'
-              ? { trialDays: parsed.settings.trialDays }
+              ? { trialDays: parsed.settings.trialDays, qr: typeof parsed.settings.qr === 'string' ? parsed.settings.qr : null }
               : { ...SEED_SETTINGS },
           accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : SEED_ACCOUNTS,
           attempts: parsed.attempts ?? {},
@@ -184,6 +185,14 @@ function reducer(state: State, action: Action): State {
     case 'SET_TRIAL_DAYS': {
       const settings = { ...state.settings, trialDays: Math.min(30, Math.max(0, action.days)) };
       return withToast({ ...state, settings }, `Демо-доступ: ${settings.trialDays} дн.`, 'ok');
+    }
+    case 'SET_PAYMENT_QR': {
+      const settings = { ...state.settings, qr: action.dataUrl };
+      return withToast(
+        { ...state, settings },
+        action.dataUrl ? 'QR-код оплаты обновлён — ученики уже видят его при оплате' : 'QR-код убран, используется заглушка',
+        'ok',
+      );
     }
     case 'TOGGLE_PUBLISHED': {
       const courses = state.courses.map((c) => (c.id === action.courseId ? { ...c, published: !c.published } : c));

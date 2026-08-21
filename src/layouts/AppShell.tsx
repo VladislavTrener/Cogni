@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { APP_VERSION } from '../data';
 import { useStore } from '../store';
 import { IconChalk, IconRefresh, IconShield, IconUser, Logo, Toasts } from '../components';
 
@@ -56,7 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="mt-auto border-t border-line bg-card/60">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12px] text-inkmut">
-            Когнитив.Про · интерактивный прототип учебной платформы · роли: ученик — учитель — администратор
+            Когнитив.Про · <span className="font-semibold text-inksoft">{APP_VERSION}</span> · роли: ученик — учитель — администратор
           </p>
           <div className="flex items-center gap-4 text-[12px] text-inkmut">
             <span className="inline-flex items-center gap-1.5"><IconUser className="w-3.5 h-3.5" /> {state.accounts.length} аккаунтов</span>

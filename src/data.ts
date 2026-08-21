@@ -2,6 +2,9 @@
  * Домен платформы Когнитив.Про: типы, демо-данные и хелперы доступа.
  */
 
+/** Видна в подвале сайта — помогает понять, свежая ли сборка установлена */
+export const APP_VERSION = 'v1.10 · курс «Логика малышам»';
+
 export type DirectionId = 'count' | 'memory' | 'logic' | 'general';
 export type Role = 'student' | 'teacher' | 'admin';
 export type LessonKind = 'trainer' | 'video' | 'test';

@@ -319,6 +319,7 @@ export default function AuthView() {
 
   const words = useMemo(() => DIRECTIONS.map((d) => d.label), []);
   const lessonCount = SEED_COURSES.reduce((s, c) => s + c.lessons.length, 0);
+  const trainerCount = SEED_COURSES.reduce((s, c) => s + c.lessons.filter((l) => l.kind === 'trainer').length, 0);
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.2fr_1fr]">
@@ -355,7 +356,7 @@ export default function AuthView() {
             </span>
             <span className="hidden sm:block h-4 w-px bg-pine-700" />
             <span className="text-[13px] text-pine-100/60">
-              {SEED_COURSES.length} курсов · {lessonCount} уроков · 12 тренажёров · метод Лейтнера
+              {SEED_COURSES.length} курсов · {lessonCount} уроков · {trainerCount} тренажёров · метод Лейтнера
             </span>
           </div>
         </div>

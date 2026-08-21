@@ -51,6 +51,8 @@
 | — | `src/features/trainers/stroop.tsx` | Память: тест Струпа, блоки 4×4–10×10 (чёрная, разноцветная, Горбова) |
 | 19 | `src/features/trainers/quest.tsx` | «Космическая тетрадь»: квест на 100 текстовых задач |
 | 20 | `src/features/trainers/subtraction.tsx` | Вычитание от 10 / от 20 и микс «сложение+вычитание до 20» |
+| 21 | `src/features/trainers/logicData.ts` | Банк из 150 логических задач (6 типов, для дошкольников и 1 класса) |
+| 22 | `src/features/trainers/logic.tsx` | «Логика малышам»: тренажёр по 6 типам задач + большой тест, с озвучкой |
 
 ## Структура папок (должно получиться)
 
@@ -77,8 +79,12 @@ kognitiv-pro/
         └── trainers/
             ├── mult.tsx
             ├── addition.tsx
+            ├── subtraction.tsx
             ├── memory.tsx
-            └── quest.tsx
+            ├── stroop.tsx
+            ├── quest.tsx
+            ├── logicData.ts
+            └── logic.tsx
 ```
 
 Файлы `package-lock.json`, `node_modules/` и `dist/` скачивать **не нужно** —

@@ -44,6 +44,7 @@ import { NBackTrainer, SequenceTrainer } from './trainers/memory';
 import { StroopTrainer } from './trainers/stroop';
 import { AdditionCosmosTrainer, AdditionCountTrainer, AdditionSmartTrainer } from './trainers/addition';
 import { SubtractionTrainer } from './trainers/subtraction';
+import { LogicTrainer } from './trainers/logic';
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
 
@@ -293,6 +294,14 @@ function LessonModal({ course, lesson, onClose }: { course: Course; lesson: Less
           {t === 'stroop' && <StroopTrainer alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />}
           {(t === 'sub10' || t === 'sub20' || t === 'mix20') && (
             <SubtractionTrainer mode={t} alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />
+          )}
+          {(t === 'logic0' || t === 'logic1' || t === 'logic2' || t === 'logic3' || t === 'logic4' || t === 'logic5' || t === 'logicMix') && (
+            <LogicTrainer
+              mode={t === 'logicMix' ? 'mix' : Number(t.slice(5))}
+              alreadyDone={alreadyDone}
+              onClose={onClose}
+              onPass={pass}
+            />
           )}
         </div>
       </div>

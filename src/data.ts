@@ -18,7 +18,14 @@ export type TrainerId =
   | 'sub10'
   | 'sub20'
   | 'mix20'
-  | 'stroop';
+  | 'stroop'
+  | 'logic0'
+  | 'logic1'
+  | 'logic2'
+  | 'logic3'
+  | 'logic4'
+  | 'logic5'
+  | 'logicMix';
 
 export interface Direction {
   id: DirectionId;
@@ -222,6 +229,26 @@ export const SEED_COURSES: Course[] = [
     validityMonths: 3,
     published: true,
     lessons: [{ id: 'ls-stroop-1', title: 'Блоки 4×4 → 10×10: три таблицы', kind: 'trainer', minutes: 15, trainer: 'stroop' }],
+  },
+  {
+    id: 'c-logic-kids',
+    directionId: 'logic',
+    title: 'Логика малышам: 150 задач',
+    subtitle: 'Для дошкольников и 1 класса. Шесть типов задач — рассуждения, анаграммы, сравнения, классификация, отношения и антонимы — плюс большой тест. Задачи озвучиваются голосом',
+    level: 1,
+    age: '5–7 лет',
+    price: 1900,
+    validityMonths: 3,
+    published: true,
+    lessons: [
+      { id: 'ls-logic-0', title: 'У кого что? (рассуждения)', kind: 'trainer', minutes: 10, trainer: 'logic0' },
+      { id: 'ls-logic-1', title: 'Переставь буквы (анаграммы)', kind: 'trainer', minutes: 10, trainer: 'logic1' },
+      { id: 'ls-logic-2', title: 'Кто больше? (сравнения)', kind: 'trainer', minutes: 10, trainer: 'logic2' },
+      { id: 'ls-logic-3', title: 'Что подходит? (классификация)', kind: 'trainer', minutes: 10, trainer: 'logic3' },
+      { id: 'ls-logic-4', title: 'Семья и отношения', kind: 'trainer', minutes: 10, trainer: 'logic4' },
+      { id: 'ls-logic-5', title: 'Слова-наоборот (антонимы)', kind: 'trainer', minutes: 10, trainer: 'logic5' },
+      { id: 'ls-logic-mix', title: 'Большой тест: 20 задач вперемешку', kind: 'test', minutes: 12, trainer: 'logicMix' },
+    ],
   },
 ];
 

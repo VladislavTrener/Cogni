@@ -20,6 +20,8 @@ export interface LogicTypeCfg {
 /** Источник задач: позволяет использовать один тренажёр с разными банками */
 export interface LogicSource {
   label: string;
+  /** фактическое число задач в банке — видно в тренажёре, удобно для проверки */
+  bankSize: number;
   types: LogicTypeCfg[];
   typeOf: (n: number) => number;
   byType: (t: number) => LogicQ[];
@@ -182,6 +184,9 @@ export function LogicTrainer({
             {mode === 'mix'
               ? `Случайные 20 задач из всех ${source.types.length} типов. Настоящая проверка для самых смелых!`
               : `${type!.desc}. В этом задании ${total} задач. Читай внимательно — или слушай, нажав на динамик!`}
+          </p>
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-line bg-card px-3.5 py-1.5 text-[12px] font-bold text-inksoft">
+            📚 в курсе всего: <span className="font-display text-[13px] text-ink">{source.bankSize}</span> задач
           </p>
           <button
             onClick={() => setStage('play')}

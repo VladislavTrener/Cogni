@@ -214,6 +214,7 @@ export function mixedSample(count: number): LogicQ[] {
 /** Источник для курса «Логика малышам» */
 export const KIDS_LOGIC_SOURCE = {
   label: 'Логика малышам',
+  bankSize: LOGIC_BANK.length,
   types: LOGIC_TYPES,
   typeOf,
   byType,

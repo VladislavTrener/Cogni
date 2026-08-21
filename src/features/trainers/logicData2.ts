@@ -131,6 +131,7 @@ export function schoolMixedSample(count: number): LogicQ[] {
 /** Источник для курса «Логика: 2–4 класс» */
 export const SCHOOL_LOGIC_SOURCE = {
   label: 'Логика: 2–4 класс',
+  bankSize: S.length,
   types: SLOGIC_TYPES,
   typeOf: schoolTypeOf,
   byType: schoolByType,

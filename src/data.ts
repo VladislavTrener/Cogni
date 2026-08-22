@@ -3,7 +3,7 @@
  */
 
 /** Видна в подвале сайта — помогает понять, свежая ли сборка установлена */
-export const APP_VERSION = 'v1.14 · «Логика 2-4 класс»: 24 смешанных блока';
+export const APP_VERSION = 'v1.15 · уроки курсов обновляются из файлов автоматически';
 
 import { SCHOOL_LOGIC_SOURCE } from './features/trainers/logicData2';
 

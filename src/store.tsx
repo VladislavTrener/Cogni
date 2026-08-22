@@ -80,10 +80,20 @@ function init(): State {
     if (raw) {
       const parsed = JSON.parse(raw) as typeof base;
       if (parsed && Array.isArray(parsed.students) && Array.isArray(parsed.courses)) {
-        // сохраняем правки админа (цены, публикацию), но автоматически
-        // добавляем курсы, которых ещё нет в хранилище — новые из обновлений
-        const savedIds = new Set(parsed.courses.map((c) => c.id));
-        const mergedCourses = [...parsed.courses, ...SEED_COURSES.filter((c) => !savedIds.has(c.id))];
+        // Список уроков всегда берём из файлов (обновления контента),
+        // а правки администратора (цена, публикация, срок доступа) — из хранилища.
+        // Так при замене файлов курс перестраивается автоматически.
+        const mergedCourses = SEED_COURSES.map((seedCourse) => {
+          const saved = parsed.courses.find((c) => c.id === seedCourse.id);
+          if (!saved) return seedCourse;
+          return {
+            ...seedCourse,
+            price: typeof saved.price === 'number' ? saved.price : seedCourse.price,
+            published: typeof saved.published === 'boolean' ? saved.published : seedCourse.published,
+            validityMonths:
+              typeof saved.validityMonths === 'number' ? saved.validityMonths : seedCourse.validityMonths,
+          };
+        });
         base = {
           students: parsed.students,
           courses: mergedCourses,

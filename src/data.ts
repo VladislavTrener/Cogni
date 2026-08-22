@@ -3,7 +3,9 @@
  */
 
 /** Видна в подвале сайта — помогает понять, свежая ли сборка установлена */
-export const APP_VERSION = 'v1.13 · курс «Логика: 2–4 класс» (235 задач)';
+export const APP_VERSION = 'v1.14 · «Логика 2-4 класс»: 24 смешанных блока';
+
+import { SCHOOL_LOGIC_SOURCE } from './features/trainers/logicData2';
 
 export type DirectionId = 'count' | 'memory' | 'logic' | 'general';
 export type Role = 'student' | 'teacher' | 'admin';
@@ -29,17 +31,8 @@ export type TrainerId =
   | 'logic4'
   | 'logic5'
   | 'logicMix'
-  | 'slogic0'
-  | 'slogic1'
-  | 'slogic2'
-  | 'slogic3'
-  | 'slogic4'
-  | 'slogic5'
-  | 'slogic6'
-  | 'slogic7'
-  | 'slogic8'
-  | 'slogic9'
-  | 'slogicMix';
+  | `slb${number}`
+  | 'slMix';
 
 export interface Direction {
   id: DirectionId;
@@ -267,25 +260,28 @@ export const SEED_COURSES: Course[] = [
   {
     id: 'c-logic-school',
     directionId: 'logic',
-    title: 'Логика: 2–4 класс: 235 задач',
-    subtitle: 'Для школьников. Десять типов задач — умозаключения, анаграммы, сравнения, цветные слова, семья, возраст, «или — или» и другие — плюс большой тест. Задачи озвучиваются голосом',
+    title: 'Логика 2-4 класс',
+    subtitle: `Для школьников. ${SCHOOL_LOGIC_SOURCE.bankSize} задач десятью типами, собранные в смешанные блоки — в каждом блоке по одной задаче каждого типа, как в настоящем тесте. Плюс большой тест. Задачи озвучиваются голосом`,
     level: 2,
     age: '8–11 лет',
     price: 2100,
     validityMonths: 3,
     published: true,
     lessons: [
-      { id: 'ls-slogic-0', title: 'Умозаключения', kind: 'trainer', minutes: 10, trainer: 'slogic0' },
-      { id: 'ls-slogic-1', title: 'Переставь буквы (анаграммы)', kind: 'trainer', minutes: 10, trainer: 'slogic1' },
-      { id: 'ls-slogic-2', title: 'Кто выше? (сравнения)', kind: 'trainer', minutes: 10, trainer: 'slogic2' },
-      { id: 'ls-slogic-3', title: 'Цветные слова: буквы', kind: 'trainer', minutes: 10, trainer: 'slogic3' },
-      { id: 'ls-slogic-4', title: 'Семья и родственники', kind: 'trainer', minutes: 10, trainer: 'slogic4' },
-      { id: 'ls-slogic-5', title: 'Возраст и время', kind: 'trainer', minutes: 10, trainer: 'slogic5' },
-      { id: 'ls-slogic-6', title: 'Найди лишнее', kind: 'trainer', minutes: 10, trainer: 'slogic6' },
-      { id: 'ls-slogic-7', title: 'Кого больше?', kind: 'trainer', minutes: 10, trainer: 'slogic7' },
-      { id: 'ls-slogic-8', title: 'Цветные слова: расположение', kind: 'trainer', minutes: 10, trainer: 'slogic8' },
-      { id: 'ls-slogic-9', title: 'Или — или (двойные условия)', kind: 'trainer', minutes: 10, trainer: 'slogic9' },
-      { id: 'ls-slogic-mix', title: 'Большой тест: 20 задач вперемешку', kind: 'test', minutes: 12, trainer: 'slogicMix' },
+      ...Array.from({ length: SCHOOL_LOGIC_SOURCE.blockCount ?? 0 }, (_, i) => {
+        const b = i + 1;
+        const size = SCHOOL_LOGIC_SOURCE.blockSize ?? 10;
+        const from = (b - 1) * size + 1;
+        const to = Math.min(b * size, SCHOOL_LOGIC_SOURCE.bankSize);
+        return {
+          id: `ls-slb-${b}`,
+          title: `Блок ${b} · задачи ${from}–${to}`,
+          kind: 'trainer' as LessonKind,
+          minutes: 8,
+          trainer: `slb${b}` as TrainerId,
+        };
+      }),
+      { id: 'ls-slmix', title: 'Большой тест: 20 задач вперемешку', kind: 'test' as LessonKind, minutes: 12, trainer: 'slMix' as TrainerId },
     ],
   },
 ];

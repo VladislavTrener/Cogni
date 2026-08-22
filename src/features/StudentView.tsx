@@ -306,11 +306,13 @@ function LessonModal({ course, lesson, onClose }: { course: Course; lesson: Less
               onPass={pass}
             />
           )}
-          {(t === 'slogic0' || t === 'slogic1' || t === 'slogic2' || t === 'slogic3' || t === 'slogic4' ||
-            t === 'slogic5' || t === 'slogic6' || t === 'slogic7' || t === 'slogic8' || t === 'slogic9' || t === 'slogicMix') && (
+          {t === 'slMix' && (
+            <LogicTrainer source={SCHOOL_LOGIC_SOURCE} mode="mix" alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />
+          )}
+          {typeof t === 'string' && t.startsWith('slb') && (
             <LogicTrainer
               source={SCHOOL_LOGIC_SOURCE}
-              mode={t === 'slogicMix' ? 'mix' : Number(t.slice(6))}
+              mode={{ block: Number(t.slice(3)) }}
               alreadyDone={alreadyDone}
               onClose={onClose}
               onPass={pass}

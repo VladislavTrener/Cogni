@@ -128,12 +128,25 @@ export function schoolMixedSample(count: number): LogicQ[] {
   return pool.slice(0, count);
 }
 
-/** Источник для курса «Логика: 2–4 класс» */
+/** Размер смешанного блока: 10 задач подряд = по одной каждого типа (цикл из 10) */
+export const SCHOOL_BLOCK_SIZE = 10;
+
+/** Сколько блоков в банке (последний может быть короче) */
+export const SCHOOL_BLOCK_COUNT = Math.ceil(S.length / SCHOOL_BLOCK_SIZE);
+
+/** Задачи блока b (1-нумерация): срез исходной последовательности, уже перемешанной по типам */
+export const schoolByBlock = (b: number): LogicQ[] =>
+  S.slice((b - 1) * SCHOOL_BLOCK_SIZE, b * SCHOOL_BLOCK_SIZE);
+
+/** Источник для курса «Логика 2-4 класс» */
 export const SCHOOL_LOGIC_SOURCE = {
-  label: 'Логика: 2–4 класс',
+  label: 'Логика 2-4 класс',
   bankSize: S.length,
   types: SLOGIC_TYPES,
   typeOf: schoolTypeOf,
   byType: schoolByType,
   mixedSample: schoolMixedSample,
+  byBlock: schoolByBlock,
+  blockCount: SCHOOL_BLOCK_COUNT,
+  blockSize: SCHOOL_BLOCK_SIZE,
 };

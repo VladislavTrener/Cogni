@@ -26,7 +26,16 @@ export interface LogicSource {
   typeOf: (n: number) => number;
   byType: (t: number) => LogicQ[];
   mixedSample: (count: number) => LogicQ[];
+  /** смешанный блок из задач подряд (по одной каждого типа) — необязательно */
+  byBlock?: (b: number) => LogicQ[];
+  /** сколько всего блоков — необязательно */
+  blockCount?: number;
+  /** размер блока — необязательно */
+  blockSize?: number;
 }
+
+/** Режим тренажёра: номер типа | 'mix' (случайные 20) | { block } (смешанный блок) */
+export type LogicMode = number | 'mix' | { block: number };
 
 const PASS = 0.6; // зачёт от 60%
 const LETTERS = ['а', 'б', 'в', 'г', 'д', 'е'];
@@ -57,7 +66,7 @@ export function LogicTrainer({
   onClose,
 }: {
   source: LogicSource;
-  mode: number | 'mix';
+  mode: LogicMode;
   alreadyDone: boolean;
   onPass: () => void;
   onClose: () => void;
@@ -65,15 +74,23 @@ export function LogicTrainer({
   const { me } = useStore();
   const reduced = useReducedMotion();
 
-  const type = mode === 'mix' ? null : source.types[mode];
-  const title = mode === 'mix' ? 'Большой тест' : type!.name;
-  const emoji = mode === 'mix' ? '🏆' : type!.emoji;
-  const accent = mode === 'mix' ? '#e8a912' : type!.color;
+  const isBlock = typeof mode === 'object' && mode !== null && 'block' in mode;
+  const blockNum = isBlock ? (mode as { block: number }).block : null;
+  const type = typeof mode === 'number' ? source.types[mode] : null;
+
+  const title = mode === 'mix' ? 'Большой тест' : isBlock ? `Блок ${blockNum}` : type!.name;
+  const emoji = mode === 'mix' ? '🏆' : isBlock ? '📦' : type!.emoji;
+  const accent = mode === 'mix' ? '#e8a912' : isBlock ? '#2fa8dc' : type!.color;
+
+  const buildQueue = (): LogicQ[] =>
+    mode === 'mix'
+      ? source.mixedSample(20)
+      : isBlock
+        ? (source.byBlock ? source.byBlock(blockNum as number) : [])
+        : source.byType(mode as number);
 
   // очередь задач: сначала весь набор, при разборе ошибок — только ошибки
-  const [queue, setQueue] = useState<LogicQ[]>(() =>
-    mode === 'mix' ? source.mixedSample(20) : source.byType(mode),
-  );
+  const [queue, setQueue] = useState<LogicQ[]>(buildQueue);
   const [idx, setIdx] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
@@ -130,7 +147,7 @@ export function LogicTrainer({
   };
 
   const restart = () => {
-    setQueue(mode === 'mix' ? source.mixedSample(20) : source.byType(mode));
+    setQueue(buildQueue());
     setIdx(0);
     setChosen(null);
     setCorrectCount(0);
@@ -183,7 +200,9 @@ export function LogicTrainer({
           <p className="mt-2 text-[14px] leading-relaxed text-inksoft">
             {mode === 'mix'
               ? `Случайные 20 задач из всех ${source.types.length} типов. Настоящая проверка для самых смелых!`
-              : `${type!.desc}. В этом задании ${total} задач. Читай внимательно — или слушай, нажав на динамик!`}
+              : isBlock
+                ? `Смешанный блок: ${total} задач подряд — по одной каждого типа, как в настоящем тесте. Читай внимательно — или слушай, нажав на динамик!`
+                : `${type!.desc}. В этом задании ${total} задач. Читай внимательно — или слушай, нажав на динамик!`}
           </p>
           <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-line bg-card px-3.5 py-1.5 text-[12px] font-bold text-inksoft">
             📚 в курсе всего: <span className="font-display text-[13px] text-ink">{source.bankSize}</span> задач

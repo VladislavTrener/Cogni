@@ -47,6 +47,7 @@ import { SubtractionTrainer } from './trainers/subtraction';
 import { LogicTrainer } from './trainers/logic';
 import { KIDS_LOGIC_SOURCE } from './trainers/logicData';
 import { SCHOOL_LOGIC_SOURCE } from './trainers/logicData2';
+import { GRADE46_LOGIC_SOURCE } from './trainers/logicGrade46';
 
 const MONTH = 30 * 24 * 60 * 60 * 1000;
 
@@ -313,6 +314,18 @@ function LessonModal({ course, lesson, onClose }: { course: Course; lesson: Less
             <LogicTrainer
               source={SCHOOL_LOGIC_SOURCE}
               mode={{ block: Number(t.slice(3)) }}
+              alreadyDone={alreadyDone}
+              onClose={onClose}
+              onPass={pass}
+            />
+          )}
+          {t === 'g46Mix' && (
+            <LogicTrainer source={GRADE46_LOGIC_SOURCE} mode="mix" alreadyDone={alreadyDone} onClose={onClose} onPass={pass} />
+          )}
+          {typeof t === 'string' && t.startsWith('g46b') && (
+            <LogicTrainer
+              source={GRADE46_LOGIC_SOURCE}
+              mode={{ block: Number(t.slice(4)) }}
               alreadyDone={alreadyDone}
               onClose={onClose}
               onPass={pass}

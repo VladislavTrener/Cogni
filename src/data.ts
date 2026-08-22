@@ -3,9 +3,10 @@
  */
 
 /** Видна в подвале сайта — помогает понять, свежая ли сборка установлена */
-export const APP_VERSION = 'v1.15 · уроки курсов обновляются из файлов автоматически';
+export const APP_VERSION = 'v1.16 · курс «Логика 4-6 класс» (235 задач)';
 
 import { SCHOOL_LOGIC_SOURCE } from './features/trainers/logicData2';
+import { GRADE46_LOGIC_SOURCE } from './features/trainers/logicGrade46';
 
 export type DirectionId = 'count' | 'memory' | 'logic' | 'general';
 export type Role = 'student' | 'teacher' | 'admin';
@@ -32,7 +33,9 @@ export type TrainerId =
   | 'logic5'
   | 'logicMix'
   | `slb${number}`
-  | 'slMix';
+  | 'slMix'
+  | `g46b${number}`
+  | 'g46Mix';
 
 export interface Direction {
   id: DirectionId;
@@ -282,6 +285,33 @@ export const SEED_COURSES: Course[] = [
         };
       }),
       { id: 'ls-slmix', title: 'Большой тест: 20 задач вперемешку', kind: 'test' as LessonKind, minutes: 12, trainer: 'slMix' as TrainerId },
+    ],
+  },
+  {
+    id: 'c-logic-46',
+    directionId: 'logic',
+    title: 'Логика 4-6 класс',
+    subtitle: `Для школьников постарше. ${GRADE46_LOGIC_SOURCE.bankSize} задач десятью типами — умозаключения, анаграммы из 5 букв, цветные слова, семейные цепочки, «или — или» с тремя условиями. Собраны в смешанные блоки, как в настоящем тесте. Плюс большой тест. Задачи озвучиваются голосом`,
+    level: 3,
+    age: '10–13 лет',
+    price: 2300,
+    validityMonths: 3,
+    published: true,
+    lessons: [
+      ...Array.from({ length: GRADE46_LOGIC_SOURCE.blockCount ?? 0 }, (_, i) => {
+        const b = i + 1;
+        const size = GRADE46_LOGIC_SOURCE.blockSize ?? 10;
+        const from = (b - 1) * size + 1;
+        const to = Math.min(b * size, GRADE46_LOGIC_SOURCE.bankSize);
+        return {
+          id: `ls-g46b-${b}`,
+          title: `Блок ${b} · задачи ${from}–${to}`,
+          kind: 'trainer' as LessonKind,
+          minutes: 8,
+          trainer: `g46b${b}` as TrainerId,
+        };
+      }),
+      { id: 'ls-g46mix', title: 'Большой тест: 20 задач вперемешку', kind: 'test' as LessonKind, minutes: 12, trainer: 'g46Mix' as TrainerId },
     ],
   },
 ];

@@ -3,14 +3,15 @@
  * Когнитив.Про — разовый установочный скрипт.
  *
  * Что делает:
- *  1. Если таблиц ещё нет — накатывает schema.sql (импорт можно сделать и
- *     вручную через phpMyAdmin, скрипт сам поймёт, что база уже готова).
- *  2. Создаёт служебные аккаунты: admin, school, bichurin (пароль 1234567890).
- *  3. Создаёт уроки всех курсов (включая блоки курсов логики).
+ *  1. Если таблиц нет — накатывает schema.sql (или импортируйте его вручную
+ *     через phpMyAdmin, скрипт поймёт, что база уже готова).
+ *  2. Создаёт 12 курсов и 2 демо-акции.
+ *  3. Создаёт служебные аккаунты: admin, school, bichurin (пароль 1234567890).
+ *  4. Создаёт уроки всех курсов (включая блоки курсов логики).
  *
  * Как пользоваться:
  *  1. Отредактируйте config.php (данные из панели sprinthost).
- *  2. Загрузите db/config.php и db/install.php в public_html вашего хоста.
+ *  2. Загрузите config.php и install.php в public_html вашего хоста.
  *  3. Откройте https://ВАШ-ДОМЕН/install.php
  *  4. После успеха ОБЯЗАТЕЛЬНО удалите install.php и config.php с хоста.
  *
@@ -51,7 +52,65 @@ if ($tables && $tables->num_rows > 0) {
     echo "✓ schema.sql импортирован — 11 таблиц создано\n";
 }
 
-/* ---------- 2. Служебные аккаунты ---------- */
+/* ---------- 2. Курсы ---------- */
+$courses = [
+    // slug, direction, title, subtitle, lvl, age, price, validity_months
+    ['c-count-mult',  'count',  'Тренировка умножения', 'Три тренажёра на одном движке: интервальные коробки Лейтнера, «Тетрадь в клетку» и «Космополёт» — таблица умножения доводится до автоматизма', 1, '8–11 лет', 1500, 3],
+    ['c-count-quest', 'count',  'Космическая тетрадь: умножение в задачах', 'Квест на 100 текстовых задач по 4 планетам — кулинария, игры, путешествия и магазин со сдачей. Ошибки повторяются, полёт сохраняется', 2, '8–11 лет', 2200, 3],
+    ['c-count-add',   'count',  'Тренировка сложения', 'Счёт до 20 с ростом сложности, умные интервальные повторы и космолёт на двузначных числах — всё на коробках Лейтнера', 1, '6–9 лет', 1900, 3],
+    ['c-count-sub10', 'count',  'Вычитание от 10', 'Все случаи вычитания из 10 — с цифрами от 0 до 9. Ошибка сразу показывает верный ответ, в конце блока — кнопка «Повторить»', 1, '6–8 лет', 1500, 3],
+    ['c-count-sub20', 'count',  'Вычитание от 20', 'Все случаи вычитания из 20 — с цифрами от 0 до 20. Ошибка показывает ответ, блок повторяется до уверенности', 1, '7–9 лет', 1500, 3],
+    ['c-count-mix20', 'count',  'Сложение и вычитание до 20', 'Смешанные примеры: сложение и вычитание с числами до 20 вперемешку. Тренирует переключение между операциями', 2, '7–10 лет', 1700, 3],
+    ['c-mem-nback',   'memory', 'N-back: тренажёр рабочей памяти', 'Классический N-back: следи за клетками и отвечай, совпадает ли текущая с клеткой N показов назад. Сложность растёт от N-1 до N-2', 2, '9–13 лет', 2100, 3],
+    ['c-mem-seq',     'memory', 'Запомни последовательность', 'Квадраты мигают по очереди — повтори порядок. Поле растёт с 4×4 до 6×6, длина последовательности — до 10', 1, '8–12 лет', 1900, 3],
+    ['c-mem-stroop',  'memory', 'Тест Струпа: таблицы внимания', 'Семь блоков от 4×4 до 10×10. В каждом — три таблицы: чёрная, разноцветная и красно-чёрная Горбова. Цифры перемешиваются при каждой попытке', 2, '9–13 лет', 1900, 3],
+    ['c-logic-kids',  'logic',  'Логика малышам: 150 задач', '150 логических задач для дошкольников и 1 класса: 6 типов вперемешку — умозаключения, анаграммы, сравнения, классификация, семья, антонимы. С озвучкой!', 1, '5–7 лет', 1900, 3],
+    ['c-logic-school','logic',  'Логика 2-4 класс: 235 задач', '235 логических задач, 10 типов в смешанных блоках по 10: умозаключения, анаграммы, сравнения, цветные слова, семья, возраст, «найди лишнее», количества, «или — или»', 2, '7–10 лет', 2200, 3],
+    ['c-logic-46',    'logic',  'Логика 4-6 класс: 235 задач', '235 логических задач повышенной сложности для 4–6 класса: четырёхзначные числа, цепочки из трёх условий, отвлекающие персонажи. 10 типов в смешанных блоках', 3, '9–12 лет', 2400, 3],
+];
+$courseCreated = 0;
+foreach ($courses as [$slug, $dir, $title, $subtitle, $lvl, $age, $price, $months]) {
+    $stmt = $mysqli->prepare("SELECT id FROM kgn_courses WHERE slug = ?");
+    $stmt->bind_param('s', $slug);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows > 0) continue;
+    $stmt = $mysqli->prepare(
+        "INSERT INTO kgn_courses (slug, direction, title, subtitle, lvl, age, price, validity_months, published)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)"
+    );
+    $stmt->bind_param('ssssisii', $slug, $dir, $title, $subtitle, $lvl, $age, $price, $months);
+    $stmt->execute();
+    $courseCreated++;
+}
+$totalCourses = (int)$mysqli->query("SELECT COUNT(*) c FROM kgn_courses")->fetch_assoc()['c'];
+echo "✓ Курсы: создано $courseCreated, всего в базе $totalCourses\n";
+
+/* ---------- 2b. Демо-акции ---------- */
+$stmt = $mysqli->prepare("SELECT id FROM kgn_promotions WHERE title = ?");
+$promoTitle = 'Всё направление «СЧЁТ»';
+$stmt->bind_param('s', $promoTitle);
+$stmt->execute();
+if ($stmt->get_result()->num_rows === 0) {
+    $mysqli->query("INSERT INTO kgn_promotions (title, active, direction, discount_type, discount_value)
+                    VALUES ('Всё направление «СЧЁТ»', 1, 'count', 'percent', 20)");
+    echo "✓ Демо-акция «Всё направление «СЧЁТ»» (−20%) создана\n";
+}
+$stmt = $mysqli->prepare("SELECT id FROM kgn_promotions WHERE title = ?");
+$promoTitle2 = 'Умножение + Сложение';
+$stmt->bind_param('s', $promoTitle2);
+$stmt->execute();
+if ($stmt->get_result()->num_rows === 0) {
+    $mysqli->query("INSERT INTO kgn_promotions (title, active, direction, discount_type, discount_value)
+                    VALUES ('Умножение + Сложение', 1, NULL, 'fixed', 2900)");
+    $promoId = (int)$mysqli->insert_id;
+    foreach (['c-count-mult', 'c-count-add'] as $slug) {
+        $cid = (int)$mysqli->query("SELECT id FROM kgn_courses WHERE slug = '" . $mysqli->real_escape_string($slug) . "'")->fetch_assoc()['id'];
+        $mysqli->query("INSERT IGNORE INTO kgn_promotion_courses (promotion_id, course_id) VALUES ($promoId, $cid)");
+    }
+    echo "✓ Демо-акция «Умножение + Сложение» (2900 ₽) создана\n";
+}
+
+/* ---------- 3. Служебные аккаунты ---------- */
 $accounts = [
     ['admin',    'Администратор', 'admin',   '1234567890'],
     ['school',   'School',        'admin',   '1234567890'],
@@ -72,7 +131,7 @@ foreach ($accounts as [$login, $name, $role, $pass]) {
     echo "✓ Создан аккаунт: $login / $pass  ($name)\n";
 }
 
-/* ---------- 3. Уроки курсов ---------- */
+/* ---------- 4. Уроки курсов ---------- */
 $courseId = function (string $slug) use ($mysqli): int {
     $stmt = $mysqli->prepare("SELECT id FROM kgn_courses WHERE slug = ?");
     $stmt->bind_param('s', $slug);
@@ -168,8 +227,9 @@ foreach ($blockCourses as [$slug, $prefix, $mixSlug, $total]) {
 $courses = (int)$mysqli->query("SELECT COUNT(*) c FROM kgn_courses")->fetch_assoc()['c'];
 $lessons = (int)$mysqli->query("SELECT COUNT(*) c FROM kgn_lessons")->fetch_assoc()['c'];
 $users   = (int)$mysqli->query("SELECT COUNT(*) c FROM kgn_users")->fetch_assoc()['c'];
+$promos  = (int)$mysqli->query("SELECT COUNT(*) c FROM kgn_promotions")->fetch_assoc()['c'];
 echo "\n=== ГОТОВО ===\n";
-echo "Курсов: $courses · Уроков: $lessons · Аккаунтов: $users\n\n";
+echo "Курсов: $courses · Уроков: $lessons · Аккаунтов: $users · Акций: $promos\n\n";
 echo "⚠ СЕЙЧАС УДАЛИТЕ С ХОСТА ФАЙЛЫ install.php И config.php!\n";
 echo "  Они содержат доступ к базе и не должны быть доступны из интернета.\n";
 echo '</pre>';

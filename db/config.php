@@ -1,12 +1,14 @@
 <?php
 /**
- * Когнитив.Про — параметры подключения к MySQL.
- * Возьмите их в панели sprinthost: «Базы данных MySQL» → ваша база.
+ * Kognitiv.Pro - database connection.
+ * Fill in the values from the sprinthost panel:
+ *   Hosting panel -> MySQL databases -> your database.
  *
- * ВАЖНО: после установки удалите этот файл с хоста (см. install.php).
+ * IMPORTANT: after running install.php, delete this file
+ * (and install.php) from the server.
  */
 
-const DB_HOST = 'localhost';       // на sprinthost почти всегда localhost
-const DB_NAME = 'kognitiv';        // имя созданной базы
-const DB_USER = 'kognitiv_user';   // пользователь базы
-const DB_PASS = 'ВАШ_ПАРОЛЬ';      // пароль пользователя базы
+define('DB_HOST', 'localhost');   // usually 'localhost' on shared hosting
+define('DB_NAME', 'YOUR_DB_NAME');
+define('DB_USER', 'YOUR_DB_USER');
+define('DB_PASS', 'YOUR_DB_PASSWORD');

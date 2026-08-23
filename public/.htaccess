@@ -1,0 +1,17 @@
+# Когнитив.Про — защита служебных файлов
+# config.php должен остаться на сервере (его использует API),
+# но прямой доступ из браузера закрываем.
+<Files "config.php">
+  Require all denied
+</Files>
+
+# SPA: любой неизвестный путь отдаёт index.html
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_URI} !^/api/
+  RewriteRule . /index.html [L]
+</IfModule>

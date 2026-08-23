@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import type { Account, Course, Payment, Promotion, Role, Settings, Student } from './data';
-import { awardStudyDay, SEED_ACCOUNTS, SEED_COURSES, SEED_PAYMENTS, SEED_PROMOTIONS, SEED_SETTINGS, SEED_STUDENTS } from './data';
+import { awardStudyDay, localDateKey, SEED_ACCOUNTS, SEED_COURSES, SEED_PAYMENTS, SEED_PROMOTIONS, SEED_SETTINGS, SEED_STUDENTS } from './data';
 
 export interface Toast {
   id: number;
@@ -170,13 +170,21 @@ function reducer(state: State, action: Action): State {
     }
     case 'COMPLETE_LESSON': {
       let already = false;
+      const lessonCourse = state.courses.find((c) => c.lessons.some((l) => l.id === action.lessonId));
+      const isLogic = lessonCourse?.directionId === 'logic';
+      const today = localDateKey();
       const students = state.students.map((s) => {
         if (s.id !== action.studentId) return s;
         if (s.done.includes(action.lessonId)) {
           already = true;
           return s;
         }
-        return awardStudyDay({ ...s, done: [...s.done, action.lessonId], points: s.points + action.points });
+        const next = awardStudyDay({ ...s, done: [...s.done, action.lessonId], points: s.points + action.points });
+        if (isLogic) {
+          const used = next.logicDay === today ? next.logicCount ?? 0 : 0;
+          return { ...next, logicDay: today, logicCount: used + 1 };
+        }
+        return next;
       });
       const next: State = { ...state, students };
       return already

@@ -844,6 +844,19 @@ export default function AdminView() {
       )}
 
       {/* смена пароля (вручную администратором) */}
+      {/* редактор акции */}
+      {promoEdit && (
+        <PromotionEditor
+          initial={promoEdit === 'new' ? null : state.promotions.find((p) => p.id === promoEdit) ?? null}
+          courses={state.courses}
+          onSave={(p) => {
+            dispatch({ type: 'SAVE_PROMOTION', promotion: p });
+            setPromoEdit(null);
+          }}
+          onClose={() => setPromoEdit(null)}
+        />
+      )}
+
       {passAccount && (
         <Modal onClose={() => setPassId(null)} width="max-w-md" labelledBy="pass-title">
           <div className="p-6 sm:p-7">

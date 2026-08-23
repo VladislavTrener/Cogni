@@ -88,6 +88,10 @@ export interface Student {
   studyDays: string[];
   /** накопленные звёзды за дни занятий */
   stars: number;
+  /** дата последнего занятия логикой (YYYY-MM-DD) — для дневного лимита */
+  logicDay?: string;
+  /** сколько блоков логики пройдено в этот день */
+  logicCount?: number;
 }
 
 export interface Payment {
@@ -537,6 +541,9 @@ export const monthWord = (n: number) => {
 
 /* ================= дни занятий и звёзды ================= */
 
+/** Дневной лимит блоков (уроков) по всем курсам вкладки ЛОГИКА */
+export const LOGIC_DAILY_LIMIT = 3;
+
 /** Локальный ключ даты YYYY-MM-DD */
 export function localDateKey(d: Date = new Date()): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -574,6 +581,13 @@ export function awardStudyDay(s: Student): Student {
     cursor.setDate(cursor.getDate() - 1);
   }
   return { ...s, studyDays, streak, stars: s.stars + starsPerDay(streak) };
+}
+
+/** Сколько блоков логики ученик ещё может пройти сегодня */
+export function logicRemaining(s: Student): number {
+  const today = localDateKey();
+  const used = s.logicDay === today ? s.logicCount ?? 0 : 0;
+  return Math.max(0, LOGIC_DAILY_LIMIT - used);
 }
 
 /* ================= акции: расчёт ================= */

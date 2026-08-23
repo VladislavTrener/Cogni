@@ -166,6 +166,36 @@ body {
 }
 .reveal.is-in { opacity: 1; transform: translateY(0); }
 
+/* ---------- мобильная адаптация ---------- */
+
+/* убираем синюю подсветку тапа на сенсорных экранах */
+@media (hover: none) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/*
+ * iOS автоматически «зумит» страницу при фокусе на полях с мелким шрифтом.
+ * Поднимаем шрифт форм до 16px на мобильных; большие поля ответов тренажёров
+ * (aria-label="Ответ") не трогаем.
+ */
+@media (max-width: 639px) {
+  input:not([aria-label="Ответ"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

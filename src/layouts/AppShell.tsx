@@ -23,7 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col paper-grid">
       <header className="sticky top-0 z-40 bg-pine-950/97 border-b border-pine-800">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 min-h-16 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
           <Logo />
           <div className="flex items-center gap-2 sm:gap-3">
             {account && (

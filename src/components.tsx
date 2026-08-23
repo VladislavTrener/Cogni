@@ -319,7 +319,12 @@ export function Modal({ onClose, children, width = 'max-w-xl', labelledBy }: { o
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby={labelledBy}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={labelledBy}
+    >
       <div className="absolute inset-0 bg-pine-950/75" onMouseDown={onClose} />
       <div className={`pop-in relative w-full ${width} max-h-[88vh] overflow-y-auto rounded-xl border border-line bg-card shadow-[0_30px_80px_-20px_rgba(8,23,17,0.55)]`}>
         {children}

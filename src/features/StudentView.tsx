@@ -9,14 +9,17 @@ import {
   DIRECTIONS,
   DirectionId,
   Lesson,
+  LOGIC_DAILY_LIMIT,
   SELLER,
   canUse,
   dirById,
   fmtDate,
   fmtRub,
   hasAccess,
+  logicRemaining,
   monthWord,
   paymentPurposeFor,
+  promotionCourses,
   trialInfo,
 } from '../data';
 import { useStore } from '../store';
@@ -481,14 +484,32 @@ function PurchaseModal({ course, onClose, onDone }: { course: Course; onClose: (
   const { state, dispatch, me } = useStore();
   const d = dirById(course.directionId);
 
-  const packageCourses = useMemo(
-    () => state.courses.filter((c) => c.published && c.directionId === course.directionId && !(me ? hasAccess(me, c.id) : false)),
-    [state.courses, course.directionId, me],
-  );
-  const packagePrice = Math.round(packageCourses.reduce((s, c) => s + c.price, 0) * 0.8);
-  const hasPackage = packageCourses.length > 1;
+  /** Подходящие активные акции: включают этот курс и есть что купить */
+  const promoOptions = useMemo(() => {
+    if (!me) return [];
+    return state.promotions
+      .filter((p) => p.active)
+      .map((p) => {
+        const all = promotionCourses(p, state.courses);
+        const toBuy = all.filter((c) => !hasAccess(me, c.id));
+        if (toBuy.length === 0 || !toBuy.some((c) => c.id === course.id)) return null;
+        const fullTotal = all.reduce((s, c) => s + c.price, 0);
+        const toBuyTotal = toBuy.reduce((s, c) => s + c.price, 0);
+        const price =
+          p.discountType === 'percent'
+            ? Math.round(toBuyTotal * (1 - p.discountValue / 100))
+            : Math.min(toBuyTotal, Math.round((p.discountValue * toBuyTotal) / Math.max(1, fullTotal)));
+        return { promo: p, toBuy, fullTotal, toBuyTotal, price, save: toBuyTotal - price };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => b.save - a.save);
+  }, [state.promotions, state.courses, me, course.id]);
 
-  const [plan, setPlan] = useState<'single' | 'package'>(hasPackage ? 'package' : 'single');
+  /** 'single' или id акции; null — авто (лучшая акция, если есть) */
+  const [planId, setPlanId] = useState<string | null>(null);
+  const activeId = planId ?? (promoOptions[0]?.promo.id ?? 'single');
+  const activeOption = promoOptions.find((o) => o.promo.id === activeId) ?? null;
+  const isSingle = activeId === 'single' || !activeOption;
   const [method, setMethod] = useState<'card' | 'sbp'>('card');
   const [num, setNum] = useState('');
   const [exp, setExp] = useState('');
@@ -503,13 +524,10 @@ function PurchaseModal({ course, onClose, onDone }: { course: Course; onClose: (
     [],
   );
 
-  const amount = plan === 'single' ? course.price : packagePrice;
-  const item = plan === 'single' ? course.title : `Пакет «${d.label}» — ${packageCourses.length} курса(ов)`;
-  const purpose =
-    plan === 'single'
-      ? paymentPurposeFor(course.title)
-      : paymentPurposeFor(`Пакет «${d.label}» (${packageCourses.length} курса)`);
-  const accessMonths = plan === 'single' ? course.validityMonths : packageCourses[0]?.validityMonths ?? course.validityMonths;
+  const amount = isSingle ? course.price : activeOption!.price;
+  const item = isSingle ? course.title : activeOption!.promo.title;
+  const purpose = paymentPurposeFor(item);
+  const accessMonths = isSingle ? course.validityMonths : activeOption!.toBuy[0]?.validityMonths ?? course.validityMonths;
   const accessUntilDate = Date.now() + accessMonths * MONTH;
   const cardValid = num.replace(/\s/g, '').length >= 12 && exp.length >= 5 && cvc.length === 3;
   const valid = method === 'sbp' ? true : cardValid;
@@ -521,7 +539,7 @@ function PurchaseModal({ course, onClose, onDone }: { course: Course; onClose: (
       dispatch({
         type: 'PURCHASE',
         studentId: me.id,
-        courseIds: plan === 'single' ? [course.id] : packageCourses.map((c) => c.id),
+        courseIds: isSingle ? [course.id] : activeOption!.toBuy.map((c) => c.id),
         amount,
         item,
         purpose,
@@ -552,9 +570,9 @@ function PurchaseModal({ course, onClose, onDone }: { course: Course; onClose: (
           <p className="font-display text-[10.5px] tracking-[0.22em] text-inksoft mt-6 mb-2.5">ТАРИФ</p>
           <div className="space-y-2">
             <button
-              onClick={() => setPlan('single')}
+              onClick={() => setPlanId('single')}
               className={`w-full flex items-center justify-between rounded-lg border-2 px-4 py-3 text-left transition-all ${
-                plan === 'single' ? 'border-pine-900 bg-pine-900/4' : 'border-line bg-card hover:border-ink/30'
+                isSingle ? 'border-pine-900 bg-pine-900/4' : 'border-line bg-card hover:border-ink/30'
               }`}
             >
               <span>
@@ -565,23 +583,34 @@ function PurchaseModal({ course, onClose, onDone }: { course: Course; onClose: (
               </span>
               <span className="font-display font-700 text-[15px] text-ink">{fmtRub(course.price)}</span>
             </button>
-            {hasPackage && (
+            {promoOptions.map((o) => (
               <button
-                onClick={() => setPlan('package')}
-                className={`w-full flex items-center justify-between rounded-lg border-2 px-4 py-3 text-left transition-all ${
-                  plan === 'package' ? 'border-pine-900 bg-pine-900/4' : 'border-line bg-card hover:border-ink/30'
+                key={o.promo.id}
+                onClick={() => setPlanId(o.promo.id)}
+                className={`w-full flex items-center justify-between gap-3 rounded-lg border-2 px-4 py-3 text-left transition-all ${
+                  activeId === o.promo.id ? 'border-pine-900 bg-pine-900/4' : 'border-line bg-card hover:border-ink/30'
                 }`}
               >
-                <span>
-                  <span className="flex items-center gap-2 text-[13.5px] font-bold text-ink">
-                    Всё направление «{d.label}»
-                    <span className="rounded-full bg-coral/12 px-2 py-0.5 text-[10px] font-bold text-coral">−20%</span>
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-2 text-[13.5px] font-bold text-ink">
+                    <span className="text-mint">🔥</span> {o.promo.title}
+                    <span className="rounded-full bg-coral/12 px-2 py-0.5 text-[10px] font-bold text-coral">
+                      {o.promo.discountType === 'percent' ? `−${o.promo.discountValue}%` : 'фикс. цена'}
+                    </span>
                   </span>
-                  <span className="text-[11.5px] text-inksoft">{packageCourses.length} курса(ов) одной покупкой</span>
+                  <span className="block truncate text-[11.5px] text-inksoft">
+                    {o.toBuy.length} курса(ов): {o.toBuy.map((c) => c.title).join(', ')}
+                  </span>
+                  <span className="text-[11px] font-semibold text-mint">
+                    выгода {fmtRub(o.save)}
+                  </span>
                 </span>
-                <span className="font-display font-700 text-[15px] text-ink">{fmtRub(packagePrice)}</span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-[11px] text-inkmut line-through">{fmtRub(o.toBuyTotal)}</span>
+                  <span className="font-display font-700 text-[15px] text-ink">{fmtRub(o.price)}</span>
+                </span>
               </button>
-            )}
+            ))}
           </div>
 
           <div className="mt-6 rounded-lg border border-dashed border-ink/25 bg-paper px-4 py-3.5 space-y-1.5">
@@ -724,6 +753,8 @@ export default function StudentView() {
   const [courseId, setCourseId] = useState<string | null>(null);
   const [purchaseId, setPurchaseId] = useState<string | null>(null);
   const [lesson, setLesson] = useState<{ course: Course; lesson: Lesson } | null>(null);
+  /** плашка «дневной лимит логики исчерпан» */
+  const [logicLimitBanner, setLogicLimitBanner] = useState(false);
 
   const published = useMemo(() => state.courses.filter((c) => c.published), [state.courses]);
 
@@ -759,6 +790,20 @@ export default function StudentView() {
 
   const hour = new Date().getHours();
   const hello = hour < 5 ? 'Доброй ночи' : hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер';
+
+  /** остаток блоков логики на сегодня (для ЛОГИКИ действует дневной лимит) */
+  const logicLeft = logicRemaining(me);
+
+  /** Открыть урок; для ЛОГИКИ — проверить дневной лимит */
+  const tryOpenLesson = (c: Course, l: Lesson) => {
+    if (c.directionId === 'logic' && !me.done.includes(l.id) && logicLeft === 0) {
+      setLogicLimitBanner(true);
+      dispatch({ type: 'TOAST', text: 'Дневной лимит логики исчерпан — приходи завтра!', tone: 'warn' });
+      return;
+    }
+    setCourseId(null);
+    setLesson({ course: c, lesson: l });
+  };
 
   const buyCourse = (c: Course) => {
     if (c.price === 0) {
@@ -829,13 +874,23 @@ export default function StudentView() {
 
       <TabBar tab={tab} setTab={setTab} counts={counts} ownedCounts={ownedCounts} />
 
-      <div key={tab} className="pt-5 pb-1">
+      <div key={tab} className="pt-5 pb-1 flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="text-[13.5px] text-inksoft">
           <span className="font-display font-700 text-[12px] tracking-[0.16em]" style={{ color: dirById(tab).color }}>
             {dirById(tab).label} —&nbsp;
           </span>
           {dirById(tab).tagline}
         </p>
+        {tab === 'logic' && (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-bold transition-colors ${
+              logicLeft > 0 ? 'bg-mint/12 text-mint' : 'bg-gold/15 text-[#9c7508]'
+            }`}
+            title="Дневной лимит блоков логики"
+          >
+            🧠 сегодня осталось блоков: {logicLeft} из {LOGIC_DAILY_LIMIT}
+          </span>
+        )}
       </div>
 
       <section key={`grid-${tab}`} className="mt-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -874,7 +929,7 @@ export default function StudentView() {
       )}
 
       {course && !purchaseCourse && (
-        <CourseModal course={course} onClose={() => setCourseId(null)} onBuy={() => buyCourse(course)} onLesson={(l) => setLesson({ course, lesson: l })} />
+        <CourseModal course={course} onClose={() => setCourseId(null)} onBuy={() => buyCourse(course)} onLesson={(l) => tryOpenLesson(course, l)} />
       )}
 
       {purchaseCourse && (
@@ -889,6 +944,30 @@ export default function StudentView() {
       )}
 
       {lesson && <LessonModal course={lesson.course} lesson={lesson.lesson} onClose={() => setLesson(null)} />}
+
+      {/* плашка дневного лимита логики */}
+      {logicLimitBanner && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-pine-950/70" onClick={() => setLogicLimitBanner(false)} />
+          <div className="pop-in relative w-full max-w-md rounded-2xl border-2 border-gold bg-card p-7 text-center shadow-[0_30px_80px_-20px_rgba(8,23,17,0.6)]">
+            <div className="text-[48px] leading-none">🧠</div>
+            <h3 className="font-display font-900 text-[20px] text-ink mt-4">Ты сегодня много занимался!</h3>
+            <p className="mt-2.5 text-[14px] leading-relaxed text-inksoft">
+              По курсам логики действует лимит — <b className="text-ink">{LOGIC_DAILY_LIMIT} блока в день</b>, чтобы знания
+              успевали укладываться. Сегодня они уже пройдены.
+            </p>
+            <p className="mt-2 font-display text-[15px] font-700" style={{ color: '#e8a912' }}>
+              Приходи завтра — лимит обновится! ⭐
+            </p>
+            <button
+              onClick={() => setLogicLimitBanner(false)}
+              className="mt-6 rounded-lg bg-pine-900 px-7 py-3 font-display text-[14px] font-700 text-paper transition-all hover:bg-pine-700 hover:-translate-y-0.5"
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

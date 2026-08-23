@@ -8,7 +8,7 @@ export const APP_VERSION = 'v1.16 · курс «Логика 4-6 класс» (2
 import { SCHOOL_LOGIC_SOURCE } from './features/trainers/logicData2';
 import { GRADE46_LOGIC_SOURCE } from './features/trainers/logicGrade46';
 
-export type DirectionId = 'count' | 'memory' | 'logic' | 'general';
+export type DirectionId = 'count' | 'memory' | 'logic' | 'general' | 'mental';
 export type Role = 'student' | 'teacher' | 'admin';
 export type LessonKind = 'trainer' | 'video' | 'test';
 export type TrainerId =
@@ -82,6 +82,12 @@ export interface Student {
   accessUntil: Record<string, number>;
   phone: string;
   email: string;
+  /** аккаунт приостановлен администратором — вход заблокирован */
+  suspended: boolean;
+  /** ISO-даты (YYYY-MM-DD), когда ученик прошёл хотя бы один урок */
+  studyDays: string[];
+  /** накопленные звёзды за дни занятий */
+  stars: number;
 }
 
 export interface Payment {
@@ -110,13 +116,27 @@ export interface UserAccount {
   title: string;
 }
 
+/** Акция: набор курсов (или всё направление) с ручной ценой или скидкой в % */
+export interface Promotion {
+  id: string;
+  title: string;
+  active: boolean;
+  /** курсы в акции; если пусто — берётся всё направление directionId */
+  courseIds: string[];
+  directionId?: DirectionId;
+  /** 'fixed' — фикс. цена за весь набор (₽); 'percent' — скидка в % от суммы */
+  discountType: 'fixed' | 'percent';
+  discountValue: number;
+}
+
 /* ================= направления ================= */
 
 export const DIRECTIONS: Direction[] = [
   { id: 'count', label: 'СЧЁТ', color: '#ff8a3d', soft: 'rgba(255,138,61,0.14)', tagline: 'ментальная арифметика, таблицы и числовые ряды' },
   { id: 'memory', label: 'ПАМЯТЬ', color: '#2fa8dc', soft: 'rgba(47,168,220,0.14)', tagline: 'рабочая память, объём и точность воспроизведения' },
   { id: 'logic', label: 'ЛОГИКА', color: '#1fa97a', soft: 'rgba(31,169,122,0.14)', tagline: 'закономерности, алгоритмы и нестандартные задачи' },
-  { id: 'general', label: 'ОБЩИЕ', color: '#e8a912', soft: 'rgba(232,169,18,0.16)', tagline: 'внимание, скорость реакции и учебные навыки' },
+  { id: 'general', label: 'ЗНАНИЕ', color: '#e8a912', soft: 'rgba(232,169,18,0.16)', tagline: 'внимание, скорость реакции и учебные навыки' },
+  { id: 'mental', label: 'МЕНТАЛЬНОЕ ЗДОРОВЬЕ', color: '#9575cd', soft: 'rgba(149,117,205,0.16)', tagline: 'курсы для взрослых: эмоциональное равновесие, стрессоустойчивость и ресурс' },
 ];
 
 export const dirById = (id: DirectionId): Direction => DIRECTIONS.find((d) => d.id === id) ?? DIRECTIONS[0];
@@ -316,6 +336,28 @@ export const SEED_COURSES: Course[] = [
   },
 ];
 
+/* ================= акции ================= */
+
+export const SEED_PROMOTIONS: Promotion[] = [
+  {
+    id: 'promo-count-all',
+    title: 'Всё направление «СЧЁТ»',
+    active: true,
+    courseIds: [],
+    directionId: 'count',
+    discountType: 'percent',
+    discountValue: 20,
+  },
+  {
+    id: 'promo-mult-add',
+    title: 'Умножение + Сложение',
+    active: true,
+    courseIds: ['c-count-mult', 'c-count-add'],
+    discountType: 'fixed',
+    discountValue: 2900,
+  },
+];
+
 /* ================= пользователи ================= */
 
 const now = Date.now();
@@ -337,6 +379,9 @@ export const SEED_STUDENTS: Student[] = [
     accessUntil: { 'c-count-mult': now + 50 * DAY_MS, 'c-count-add': now + 62 * DAY_MS },
     phone: '+7 900 111-22-01',
     email: 'misha@demo.ru',
+    suspended: false,
+    studyDays: recentStudyDays(6),
+    stars: 42,
   },
   {
     id: 'anya',
@@ -352,6 +397,9 @@ export const SEED_STUDENTS: Student[] = [
     accessUntil: {},
     phone: '+7 900 111-22-02',
     email: 'anya@demo.ru',
+    suspended: false,
+    studyDays: recentStudyDays(0),
+    stars: 0,
   },
   {
     id: 'vera',
@@ -367,6 +415,9 @@ export const SEED_STUDENTS: Student[] = [
     accessUntil: { 'c-count-quest': now + 30 * DAY_MS, 'c-mem-nback': now + 25 * DAY_MS },
     phone: '+7 900 111-22-03',
     email: 'vera@demo.ru',
+    suspended: false,
+    studyDays: recentStudyDays(11),
+    stars: 63,
   },
   {
     id: 'lev',
@@ -382,6 +433,9 @@ export const SEED_STUDENTS: Student[] = [
     accessUntil: { 'c-count-mult': now + 15 * DAY_MS, 'c-count-quest': now + 45 * DAY_MS },
     phone: '+7 900 111-22-04',
     email: 'lev@demo.ru',
+    suspended: false,
+    studyDays: recentStudyDays(14),
+    stars: 96,
   },
   {
     id: 'polina',
@@ -397,6 +451,9 @@ export const SEED_STUDENTS: Student[] = [
     accessUntil: { 'c-count-mult': now + 60 * DAY_MS },
     phone: '+7 900 111-22-05',
     email: 'polina@demo.ru',
+    suspended: false,
+    studyDays: recentStudyDays(3),
+    stars: 21,
   },
 ];
 
@@ -477,6 +534,64 @@ export const monthWord = (n: number) => {
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'месяца';
   return 'месяцев';
 };
+
+/* ================= дни занятий и звёзды ================= */
+
+/** Локальный ключ даты YYYY-MM-DD */
+export function localDateKey(d: Date = new Date()): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** Звёзд за день при данной длине непрерывной серии: 1–7 дн → ×1, 8–14 → ×2, 15–21 → ×3… */
+export const starsPerDay = (streak: number) => Math.floor((Math.max(1, streak) - 1) / 7) + 1;
+
+/** Последние n дней (для демо-данных) */
+export function recentStudyDays(n: number): string[] {
+  const out: string[] = [];
+  const d = new Date();
+  for (let i = 0; i < n; i++) {
+    out.push(localDateKey(d));
+    d.setDate(d.getDate() - 1);
+  }
+  return out.sort();
+}
+
+/**
+ * Засчитать день занятий: если сегодня ещё не отмечен — добавить,
+ * пересчитать непрерывную серию и начислить звёзды по прогрессии.
+ */
+export function awardStudyDay(s: Student): Student {
+  const today = localDateKey();
+  if (s.studyDays.includes(today)) return s;
+  const studyDays = [...s.studyDays, today].sort();
+  let streak = 1;
+  const cursor = new Date();
+  cursor.setDate(cursor.getDate() - 1);
+  while (studyDays.includes(localDateKey(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return { ...s, studyDays, streak, stars: s.stars + starsPerDay(streak) };
+}
+
+/* ================= акции: расчёт ================= */
+
+/** Курсы, входящие в акцию (конкретные или всё направление) */
+export function promotionCourses(promo: Promotion, courses: Course[]): Course[] {
+  if (promo.courseIds.length > 0) return courses.filter((c) => promo.courseIds.includes(c.id) && c.published);
+  if (promo.directionId) return courses.filter((c) => c.directionId === promo.directionId && c.published);
+  return [];
+}
+
+/** Итоговая цена акции */
+export function promotionPrice(promo: Promotion, courses: Course[]): number {
+  const set = promotionCourses(promo, courses);
+  const total = set.reduce((sum, c) => sum + c.price, 0);
+  if (promo.discountType === 'fixed') return Math.min(promo.discountValue, total);
+  return Math.round(total * (1 - promo.discountValue / 100));
+}
 
 /* ================= доступ ================= */
 

@@ -4,11 +4,26 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Course, SEED_STUDENTS, canUse, dirById, fmtDate, fmtRub, hasAccess, initials, trialInfo } from '../data';
+import {
+  Course,
+  DIRECTIONS,
+  Promotion,
+  SEED_STUDENTS,
+  canUse,
+  dirById,
+  fmtDate,
+  fmtRub,
+  hasAccess,
+  initials,
+  promotionCourses,
+  promotionPrice,
+  trialInfo,
+} from '../data';
 import { useStore } from '../store';
-import { CountUp, IconClose, IconKey, IconQr, IconRefresh, IconTrash, Modal, Reveal, Spark } from '../components';
+import { CountUp, IconClose, IconKey, IconQr, IconRefresh, IconSpark, IconTrash, Modal, Reveal, Spark } from '../components';
 
-type AdminTab = 'access' | 'money' | 'users';
+type AdminTab = 'access' | 'money' | 'promo' | 'users';
+type UserSort = { key: 'name' | 'sum' | 'count'; dir: 1 | -1 };
 
 function Kpi({ label, value, format, spark, color, hint, delay }: { label: string; value: number; format?: (n: number) => string; spark: number[]; color: string; hint: string; delay: number }) {
   return (
@@ -63,6 +78,199 @@ function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; la
   );
 }
 
+/** Редактор акции: состав (курсы или направление) + скидка (фикс. цена или %) */
+function PromotionEditor({
+  initial,
+  courses,
+  onSave,
+  onClose,
+}: {
+  initial: Promotion | null;
+  courses: Course[];
+  onSave: (p: Promotion) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [mode, setMode] = useState<'courses' | 'direction'>(initial && initial.courseIds.length === 0 && initial.directionId ? 'direction' : 'courses');
+  const [courseIds, setCourseIds] = useState<string[]>(initial?.courseIds ?? []);
+  const [directionId, setDirectionId] = useState<string>(initial?.directionId ?? 'count');
+  const [discountType, setDiscountType] = useState<'fixed' | 'percent'>(initial?.discountType ?? 'percent');
+  const [discountValue, setDiscountValue] = useState(String(initial?.discountValue ?? 20));
+
+  const draft: Promotion = {
+    id: initial?.id ?? `promo-${Date.now()}`,
+    title: title.trim(),
+    active: initial?.active ?? true,
+    courseIds: mode === 'courses' ? courseIds : [],
+    directionId: mode === 'direction' ? (directionId as Promotion['directionId']) : undefined,
+    discountType,
+    discountValue: Math.max(0, Number(discountValue.replace(/\D/g, '')) || 0),
+  };
+
+  const previewCourses = promotionCourses(draft, courses);
+  const previewTotal = previewCourses.reduce((s, c) => s + c.price, 0);
+  const previewPrice = promotionPrice(draft, courses);
+
+  const toggleCourse = (id: string) =>
+    setCourseIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const valid = draft.title.length > 0 && previewCourses.length > 0 && draft.discountValue > 0;
+
+  return (
+    <Modal onClose={onClose} width="max-w-2xl" labelledBy="promo-title">
+      <div className="p-6 sm:p-7">
+        <div className="flex items-start justify-between">
+          <h3 id="promo-title" className="font-display font-900 text-xl text-ink">
+            {initial ? 'Редактировать акцию' : 'Новая акция'}
+          </h3>
+          <button onClick={onClose} className="rounded-md p-2 text-inkmut hover:bg-ink/6 hover:text-ink transition-colors" aria-label="Закрыть">
+            <IconClose className="w-5 h-5" />
+          </button>
+        </div>
+
+        <label className="mt-5 block">
+          <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-inksoft">Название акции</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Например: Умножение + Сложение"
+            className="mt-1.5 w-full rounded-lg border border-line bg-card px-4 py-2.5 text-[14px] text-ink outline-none placeholder:text-inkmut/50 focus:border-pine-700 transition-colors"
+          />
+        </label>
+
+        {/* состав */}
+        <p className="mt-5 text-[12px] font-bold uppercase tracking-[0.14em] text-inksoft">Что входит в акцию</p>
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={() => setMode('courses')}
+            className={`rounded-md border px-3.5 py-2 text-[12.5px] font-bold transition-colors ${
+              mode === 'courses' ? 'border-pine-700 bg-pine-900 text-paper' : 'border-line bg-card text-inksoft hover:border-ink/30'
+            }`}
+          >
+            Выбрать курсы вручную
+          </button>
+          <button
+            onClick={() => setMode('direction')}
+            className={`rounded-md border px-3.5 py-2 text-[12.5px] font-bold transition-colors ${
+              mode === 'direction' ? 'border-pine-700 bg-pine-900 text-paper' : 'border-line bg-card text-inksoft hover:border-ink/30'
+            }`}
+          >
+            Всё направление
+          </button>
+        </div>
+
+        {mode === 'courses' ? (
+          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+            {courses
+              .filter((c) => c.published)
+              .map((c) => {
+                const on = courseIds.includes(c.id);
+                const d = dirById(c.directionId);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => toggleCourse(c.id)}
+                    className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-[12.5px] transition-colors ${
+                      on ? 'border-pine-700 bg-pine-900/5 text-ink' : 'border-line bg-card text-inksoft hover:border-ink/30'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                        on ? 'border-pine-700 bg-pine-700 text-paper' : 'border-ink/25'
+                      }`}
+                    >
+                      {on && <span className="text-[9px] leading-none">✓</span>}
+                    </span>
+                    <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: d.color }} />
+                    <span className="flex-1 truncate font-semibold">{c.title}</span>
+                    <span className="text-inkmut">{fmtRub(c.price)}</span>
+                  </button>
+                );
+              })}
+          </div>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {DIRECTIONS.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setDirectionId(d.id)}
+                className={`rounded-md border px-3.5 py-2 text-[12.5px] font-bold transition-colors ${
+                  directionId === d.id ? 'border-pine-700 bg-pine-900 text-paper' : 'border-line bg-card text-inksoft hover:border-ink/30'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* скидка */}
+        <p className="mt-5 text-[12px] font-bold uppercase tracking-[0.14em] text-inksoft">Выгода</p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDiscountType('percent')}
+              className={`rounded-md border px-3.5 py-2 text-[12.5px] font-bold transition-colors ${
+                discountType === 'percent' ? 'border-pine-700 bg-pine-900 text-paper' : 'border-line bg-card text-inksoft hover:border-ink/30'
+              }`}
+            >
+              Скидка, %
+            </button>
+            <button
+              onClick={() => setDiscountType('fixed')}
+              className={`rounded-md border px-3.5 py-2 text-[12.5px] font-bold transition-colors ${
+                discountType === 'fixed' ? 'border-pine-700 bg-pine-900 text-paper' : 'border-line bg-card text-inksoft hover:border-ink/30'
+              }`}
+            >
+              Фикс. цена, ₽
+            </button>
+          </div>
+          <input
+            value={discountValue}
+            onChange={(e) => setDiscountValue(e.target.value.replace(/[^\d]/g, ''))}
+            inputMode="numeric"
+            aria-label="Значение скидки"
+            className="w-24 rounded-lg border border-line bg-card px-3 py-2 text-right font-display text-[14px] font-700 text-ink outline-none focus:border-pine-700 transition-colors"
+          />
+          <span className="text-[13px] font-bold text-inksoft">{discountType === 'percent' ? '%' : '₽ за весь набор'}</span>
+        </div>
+
+        {/* предпросмотр */}
+        <div className="mt-5 rounded-xl border border-dashed border-ink/20 bg-paper px-4 py-3.5">
+          <p className="text-[12px] text-inksoft">
+            В акции <b className="text-ink">{previewCourses.length}</b> курс(ов) на сумму{' '}
+            <b className="text-ink">{fmtRub(previewTotal)}</b>
+          </p>
+          <p className="mt-1 text-[14px]">
+            Цена для ученика:{' '}
+            <b className="font-display text-[18px]" style={{ color: '#1fa97a' }}>
+              {fmtRub(previewPrice)}
+            </b>
+            {previewTotal > 0 && previewPrice < previewTotal && (
+              <span className="ml-2 rounded-full bg-mint/12 px-2 py-0.5 text-[11px] font-bold text-mint">
+                выгода {fmtRub(previewTotal - previewPrice)}
+              </span>
+            )}
+          </p>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-lg border border-ink/15 px-5 py-2.5 text-[13.5px] font-bold text-ink hover:border-ink/40 transition-colors">
+            Отмена
+          </button>
+          <button
+            onClick={() => onSave(draft)}
+            disabled={!valid}
+            className="rounded-lg bg-pine-900 px-5 py-2.5 text-[13.5px] font-bold text-paper transition-colors hover:bg-pine-700 disabled:opacity-40"
+          >
+            Сохранить акцию
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function AdminView() {
   const { state, dispatch } = useStore();
   const [tab, setTab] = useState<AdminTab>('access');
@@ -70,9 +278,39 @@ export default function AdminView() {
   const [passId, setPassId] = useState<string | null>(null);
   const [newPass, setNewPass] = useState('');
   const [extendId, setExtendId] = useState<string | null>(null);
+  const [userSort, setUserSort] = useState<UserSort>({ key: 'name', dir: 1 });
+  /** null — редактор закрыт; 'new' — новая акция; id — редактирование */
+  const [promoEdit, setPromoEdit] = useState<string | null>(null);
 
   const revenue = useMemo(() => state.payments.reduce((s, p) => s + p.amount, 0), [state.payments]);
   const trialDays = state.settings.trialDays;
+
+  /** сумма платежей и число оплаченных курсов по каждому ученику */
+  const payStats = useMemo(() => {
+    const map: Record<string, { sum: number; count: number }> = {};
+    state.students.forEach((s) => {
+      map[s.id] = {
+        sum: state.payments.filter((p) => p.studentId === s.id).reduce((a, p) => a + p.amount, 0),
+        count: state.courses.filter((c) => hasAccess(s, c.id)).length,
+      };
+    });
+    return map;
+  }, [state.students, state.payments, state.courses]);
+
+  const sortedStudents = useMemo(() => {
+    const list = [...state.students];
+    list.sort((a, b) => {
+      const pa = payStats[a.id] ?? { sum: 0, count: 0 };
+      const pb = payStats[b.id] ?? { sum: 0, count: 0 };
+      if (userSort.key === 'name') return a.name.localeCompare(b.name, 'ru') * userSort.dir;
+      if (userSort.key === 'sum') return (pa.sum - pb.sum) * userSort.dir;
+      return (pa.count - pb.count) * userSort.dir;
+    });
+    return list;
+  }, [state.students, payStats, userSort]);
+
+  const toggleSort = (key: UserSort['key']) =>
+    setUserSort((prev) => (prev.key === key ? { key, dir: prev.dir === 1 ? -1 : 1 } : { key, dir: key === 'name' ? 1 : -1 }));
 
   const avgProgress = useMemo(() => {
     const published = state.courses.filter((c) => c.published);
@@ -94,6 +332,7 @@ export default function AdminView() {
   const tabs: { id: AdminTab; label: string }[] = [
     { id: 'access', label: 'Доступ и витрина' },
     { id: 'money', label: 'Финансы' },
+    { id: 'promo', label: 'Акции' },
     { id: 'users', label: 'Пользователи' },
   ];
 
@@ -313,6 +552,78 @@ export default function AdminView() {
         </Reveal>
       )}
 
+      {tab === 'promo' && (
+        <Reveal key="promo" className="mt-6 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[13px] text-inksoft max-w-xl">
+              Акции видны ученикам при покупке: можно выбрать акцию или купить один курс. Скидка — вручную (₽) или в процентах, без дат.
+            </p>
+            <button
+              onClick={() => setPromoEdit('new')}
+              className="inline-flex items-center gap-2 rounded-lg bg-pine-900 px-4 py-2.5 text-[13px] font-bold text-paper transition-all hover:bg-pine-700 hover:-translate-y-0.5"
+            >
+              <IconSpark className="w-4 h-4" /> Новая акция
+            </button>
+          </div>
+
+          {state.promotions.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-ink/15 bg-card/60 px-6 py-12 text-center">
+              <p className="font-display font-700 text-[16px] text-ink">Акций пока нет</p>
+              <p className="mt-1.5 text-[13.5px] text-inksoft">Создайте первую — она сразу появится у учеников при покупке.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {state.promotions.map((p) => {
+                const set = promotionCourses(p, state.courses);
+                const total = set.reduce((s, c) => s + c.price, 0);
+                const price = promotionPrice(p, state.courses);
+                return (
+                  <div
+                    key={p.id}
+                    className={`rounded-xl border bg-card p-5 transition-all ${p.active ? 'border-line' : 'border-line opacity-60'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-display font-700 text-[15px] text-ink">{p.title}</p>
+                        <p className="mt-1 text-[12px] text-inkmut">
+                          {p.courseIds.length > 0
+                            ? `${set.length} курс(а) вручную`
+                            : `Всё направление «${p.directionId ? dirById(p.directionId).label : ''}»`}
+                        </p>
+                      </div>
+                      <Switch on={p.active} onToggle={() => dispatch({ type: 'TOGGLE_PROMOTION', promotionId: p.id })} label={`Акция ${p.title}`} />
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="rounded-full bg-mint/12 px-2.5 py-1 text-[12px] font-bold text-mint">
+                        {p.discountType === 'percent' ? `−${p.discountValue}%` : `за ${fmtRub(p.discountValue)}`}
+                      </span>
+                      <span className="text-[12px] text-inksoft line-through">{fmtRub(total)}</span>
+                      <span className="font-display font-900 text-[16px]" style={{ color: '#1fa97a' }}>
+                        {fmtRub(price)}
+                      </span>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => setPromoEdit(p.id)}
+                        className="rounded-md border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-inksoft transition-colors hover:border-sky hover:text-sky"
+                      >
+                        Изменить
+                      </button>
+                      <button
+                        onClick={() => dispatch({ type: 'DELETE_PROMOTION', promotionId: p.id })}
+                        className="inline-flex items-center gap-1 rounded-md border border-line bg-paper px-3 py-1.5 text-[12px] font-bold text-inksoft transition-colors hover:border-coral hover:text-coral"
+                      >
+                        <IconTrash className="w-3.5 h-3.5" /> Удалить
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Reveal>
+      )}
+
       {tab === 'users' && (
         <Reveal key="users" className="mt-6 space-y-5">
           {/* персонал: администраторы и преподаватель */}
@@ -373,21 +684,49 @@ export default function AdminView() {
             </table>
           </div>
 
+          {/* сортировка */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-inkmut">Сортировать:</span>
+            {(
+              [
+                { key: 'name', label: 'По имени' },
+                { key: 'sum', label: 'По оплате (сумма)' },
+                { key: 'count', label: 'По оплате (курсы)' },
+              ] as { key: UserSort['key']; label: string }[]
+            ).map((o) => (
+              <button
+                key={o.key}
+                onClick={() => toggleSort(o.key)}
+                className={`rounded-md border px-3 py-1.5 text-[12px] font-bold transition-colors ${
+                  userSort.key === o.key
+                    ? 'border-pine-700 bg-pine-900 text-paper'
+                    : 'border-line bg-card text-inksoft hover:border-ink/30'
+                }`}
+              >
+                {o.label}
+                {userSort.key === o.key && <span className="ml-1">{userSort.dir === 1 ? '↑' : '↓'}</span>}
+              </button>
+            ))}
+          </div>
+
           <div className="overflow-x-auto rounded-xl border border-line bg-card">
-            <table className="w-full min-w-[720px] text-left">
+            <table className="w-full min-w-[860px] text-left">
               <thead>
                 <tr className="border-b border-line text-[11px] uppercase tracking-[0.14em] text-inkmut">
                   <th className="px-5 py-3.5 font-bold">Ученик</th>
+                  <th className="px-5 py-3.5 font-bold">Телефон</th>
                   <th className="px-5 py-3.5 font-bold">Регистрация</th>
                   <th className="px-5 py-3.5 font-bold">Доступ</th>
+                  <th className="px-5 py-3.5 font-bold text-right">Оплачено</th>
                   <th className="px-5 py-3.5 font-bold text-right">Очки</th>
                   <th className="px-5 py-3.5 font-bold text-right">Действия</th>
                 </tr>
               </thead>
               <tbody>
-                {state.students.map((s) => {
+                {sortedStudents.map((s) => {
                   const trial = trialInfo(s, trialDays);
-                  const paidCount = state.courses.filter((c) => hasAccess(s, c.id)).length;
+                  const ps = payStats[s.id] ?? { sum: 0, count: 0 };
+                  const paidCount = ps.count;
                   return (
                     <tr key={s.id} className="border-b border-line/60 last:border-0 text-[13.5px] hover:bg-ink/3">
                       <td className="px-5 py-3.5">
@@ -396,11 +735,17 @@ export default function AdminView() {
                             {initials(s.name)}
                           </span>
                           <span>
-                            <span className="block font-bold text-ink">{s.name}</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="font-bold text-ink">{s.name}</span>
+                              {s.suspended && (
+                                <span className="rounded-full bg-coral/12 px-2 py-0.5 text-[10px] font-bold text-coral">приостановлен</span>
+                              )}
+                            </span>
                             <span className="text-[11.5px] text-inkmut">{s.age} лет · группа {s.group} · {s.email}</span>
                           </span>
                         </span>
                       </td>
+                      <td className="px-5 py-3.5 text-inksoft whitespace-nowrap">{s.phone}</td>
                       <td className="px-5 py-3.5 text-inksoft">{fmtDate(s.registeredAt)}</td>
                       <td className="px-5 py-3.5">
                         {paidCount > 0 ? (
@@ -411,9 +756,24 @@ export default function AdminView() {
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-coral/10 px-2.5 py-1 text-[11px] font-bold text-coral">нет доступа</span>
                         )}
                       </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <span className="block font-display font-700 text-ink">{fmtRub(ps.sum)}</span>
+                        <span className="text-[11px] text-inkmut">{paidCount} курс(а)</span>
+                      </td>
                       <td className="px-5 py-3.5 text-right font-display font-700 text-ink">{s.points}</td>
                       <td className="px-5 py-3.5">
                         <span className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => dispatch({ type: 'TOGGLE_SUSPEND', studentId: s.id })}
+                            className={`rounded-md border px-2.5 py-1.5 text-[11.5px] font-bold transition-colors ${
+                              s.suspended
+                                ? 'border-mint/40 bg-mint/10 text-mint hover:bg-mint/20'
+                                : 'border-line bg-paper text-inksoft hover:border-gold hover:text-gold'
+                            }`}
+                            title={s.suspended ? 'Возобновить доступ' : 'Приостановить — заблокировать вход'}
+                          >
+                            {s.suspended ? 'Возобновить' : 'Приостановить'}
+                          </button>
                           <button
                             onClick={() => dispatch({ type: 'EXTEND_ACCESS', studentId: s.id, days: 30 })}
                             className="rounded-md border border-line bg-paper px-2.5 py-1.5 text-[11.5px] font-bold text-inksoft transition-colors hover:border-mint hover:text-mint"

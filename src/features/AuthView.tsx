@@ -114,6 +114,14 @@ function AuthPanel() {
       );
       return;
     }
+    // приостановленный администратором аккаунт — вход заблокирован
+    if (acc.role === 'student' && acc.studentId) {
+      const student = state.students.find((s) => s.id === acc.studentId);
+      if (student?.suspended) {
+        setLoginErr('Доступ приостановлен. Обратитесь к администратору.');
+        return;
+      }
+    }
     setLoginErr(null);
     setPending(true);
     setTimeout(() => {
@@ -149,6 +157,9 @@ function AuthPanel() {
         accessUntil: {},
         phone: regPhone.trim(),
         email,
+        suspended: false,
+        studyDays: [],
+        stars: 0,
       };
       const account: Account = {
         id: `acc-${id}`,

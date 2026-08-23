@@ -10,14 +10,6 @@ import { Bar, IconCheck, IconCoin, IconFlame, Reveal, Ring } from '../components
 
 type TeacherTab = 'progress' | 'courses' | 'payments';
 
-const SCHEDULE = [
-  { day: 'Пн', time: '16:00', group: 'А', topic: 'Счёт', color: '#ff8a3d' },
-  { day: 'Вт', time: '17:00', group: 'Б', topic: 'Память', color: '#2fa8dc' },
-  { day: 'Ср', time: '16:00', group: 'А', topic: 'Логика', color: '#1fa97a' },
-  { day: 'Чт', time: '17:30', group: 'В', topic: 'Общие', color: '#e8a912' },
-  { day: 'Пт', time: '16:00', group: 'Б', topic: 'Счёт', color: '#ff8a3d' },
-];
-
 function progressOf(s: Student, courses: Course[], trialDays: number) {
   const owned = courses.filter((c) => canUse(s, c.id, trialDays));
   const total = owned.reduce((sum, c) => sum + c.lessons.length, 0);
@@ -135,15 +127,6 @@ export default function TeacherView() {
           <p className="text-[13.5px] text-inksoft mt-2">
             Группы А–В · {state.students.length} учеников · отметки видны ученикам сразу
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {SCHEDULE.map((s, i) => (
-            <span key={i} className="inline-flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2 text-[12px] font-semibold text-inksoft transition-transform hover:-translate-y-0.5">
-              <span className="font-display text-ink">{s.day} {s.time}</span>
-              <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
-              гр. {s.group} · {s.topic}
-            </span>
-          ))}
         </div>
       </section>
 

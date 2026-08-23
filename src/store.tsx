@@ -3,8 +3,8 @@
  */
 
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import type { Account, Course, Payment, Role, Settings, Student } from './data';
-import { SEED_ACCOUNTS, SEED_COURSES, SEED_PAYMENTS, SEED_SETTINGS, SEED_STUDENTS } from './data';
+import type { Account, Course, Payment, Promotion, Role, Settings, Student } from './data';
+import { awardStudyDay, SEED_ACCOUNTS, SEED_COURSES, SEED_PAYMENTS, SEED_PROMOTIONS, SEED_SETTINGS, SEED_STUDENTS } from './data';
 
 export interface Toast {
   id: number;
@@ -18,6 +18,7 @@ export interface State {
   payments: Payment[];
   settings: Settings;
   accounts: Account[];
+  promotions: Promotion[];
   /** login → количество неудачных попыток входа */
   attempts: Record<string, number>;
   /** login → timestamp, до которого вход заблокирован */
@@ -48,6 +49,10 @@ export type Action =
   | { type: 'REGISTER'; account: Account; student: Student }
   | { type: 'ATTEMPT_FAIL'; login: string }
   | { type: 'UNLOCK'; login: string }
+  | { type: 'TOGGLE_SUSPEND'; studentId: string }
+  | { type: 'SAVE_PROMOTION'; promotion: Promotion }
+  | { type: 'DELETE_PROMOTION'; promotionId: string }
+  | { type: 'TOGGLE_PROMOTION'; promotionId: string }
   | { type: 'TOAST'; text: string; tone?: Toast['tone'] }
   | { type: 'DISMISS_TOAST'; id: number }
   | { type: 'RESET' };
@@ -61,13 +66,14 @@ const withToast = (state: State, text: string, tone: Toast['tone'] = 'ok'): Stat
   toasts: [...state.toasts.slice(-3), { id: toastSeq++, text, tone }],
 });
 
-function freshSeed(): Pick<State, 'students' | 'courses' | 'payments' | 'settings' | 'accounts' | 'attempts' | 'lockedUntil'> {
+function freshSeed(): Pick<State, 'students' | 'courses' | 'payments' | 'settings' | 'accounts' | 'promotions' | 'attempts' | 'lockedUntil'> {
   return {
     students: SEED_STUDENTS,
     courses: SEED_COURSES,
     payments: SEED_PAYMENTS,
     settings: { ...SEED_SETTINGS },
     accounts: SEED_ACCOUNTS,
+    promotions: SEED_PROMOTIONS,
     attempts: {},
     lockedUntil: {},
   };
@@ -95,7 +101,13 @@ function init(): State {
           };
         });
         base = {
-          students: parsed.students,
+          // дополняем учеников из старого хранилища новыми полями
+          students: parsed.students.map((ps) => ({
+            ...ps,
+            suspended: typeof ps.suspended === 'boolean' ? ps.suspended : false,
+            studyDays: Array.isArray(ps.studyDays) ? ps.studyDays : [],
+            stars: typeof ps.stars === 'number' ? ps.stars : 0,
+          })),
           courses: mergedCourses,
           payments: Array.isArray(parsed.payments) ? parsed.payments : SEED_PAYMENTS,
           settings:
@@ -103,6 +115,7 @@ function init(): State {
               ? { trialDays: parsed.settings.trialDays, qr: typeof parsed.settings.qr === 'string' ? parsed.settings.qr : null }
               : { ...SEED_SETTINGS },
           accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : SEED_ACCOUNTS,
+          promotions: Array.isArray(parsed.promotions) ? parsed.promotions : SEED_PROMOTIONS,
           attempts: parsed.attempts ?? {},
           lockedUntil: parsed.lockedUntil ?? {},
         };
@@ -163,7 +176,7 @@ function reducer(state: State, action: Action): State {
           already = true;
           return s;
         }
-        return { ...s, done: [...s.done, action.lessonId], points: s.points + action.points };
+        return awardStudyDay({ ...s, done: [...s.done, action.lessonId], points: s.points + action.points });
       });
       const next: State = { ...state, students };
       return already
@@ -174,7 +187,7 @@ function reducer(state: State, action: Action): State {
       const students = state.students.map((s) => {
         if (s.id !== action.studentId) return s;
         const has = s.done.includes(action.lessonId);
-        if (action.done && !has) return { ...s, done: [...s.done, action.lessonId] };
+        if (action.done && !has) return awardStudyDay({ ...s, done: [...s.done, action.lessonId] });
         if (!action.done && has) return { ...s, done: s.done.filter((d) => d !== action.lessonId) };
         return s;
       });
@@ -276,6 +289,35 @@ function reducer(state: State, action: Action): State {
       delete lockedUntil[action.login];
       return { ...state, attempts, lockedUntil };
     }
+    case 'TOGGLE_SUSPEND': {
+      const students = state.students.map((s) => (s.id === action.studentId ? { ...s, suspended: !s.suspended } : s));
+      const st = students.find((s) => s.id === action.studentId);
+      return withToast(
+        { ...state, students },
+        st?.suspended ? `«${st?.name}» приостановлен — вход заблокирован` : `«${st?.name}» снова активен`,
+        st?.suspended ? 'warn' : 'ok',
+      );
+    }
+    case 'SAVE_PROMOTION': {
+      const exists = state.promotions.some((p) => p.id === action.promotion.id);
+      const promotions = exists
+        ? state.promotions.map((p) => (p.id === action.promotion.id ? action.promotion : p))
+        : [...state.promotions, action.promotion];
+      return withToast({ ...state, promotions }, 'Акция сохранена', 'ok');
+    }
+    case 'DELETE_PROMOTION': {
+      const promotions = state.promotions.filter((p) => p.id !== action.promotionId);
+      return withToast({ ...state, promotions }, 'Акция удалена', 'warn');
+    }
+    case 'TOGGLE_PROMOTION': {
+      const promotions = state.promotions.map((p) => (p.id === action.promotionId ? { ...p, active: !p.active } : p));
+      const p = promotions.find((x) => x.id === action.promotionId);
+      return withToast(
+        { ...state, promotions },
+        p?.active ? `Акция «${p?.title}» включена` : `Акция «${p?.title}» выключена`,
+        p?.active ? 'ok' : 'info',
+      );
+    }
     case 'TOAST':
       return withToast(state, action.text, action.tone ?? 'info');
     case 'DISMISS_TOAST':
@@ -314,6 +356,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           payments: state.payments,
           settings: state.settings,
           accounts: state.accounts,
+          promotions: state.promotions,
           attempts: state.attempts,
           lockedUntil: state.lockedUntil,
         }),
@@ -321,7 +364,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* noop */
     }
-  }, [state.students, state.courses, state.payments, state.settings, state.accounts, state.attempts, state.lockedUntil]);
+  }, [state.students, state.courses, state.payments, state.settings, state.accounts, state.promotions, state.attempts, state.lockedUntil]);
 
   const me = useMemo(() => {
     if (!state.session || state.session.role !== 'student') return null;
